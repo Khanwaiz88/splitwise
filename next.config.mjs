@@ -5,6 +5,28 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === "development",
   register: true,
   skipWaiting: true,
+  cacheOnFrontEndNav: true,
+  reloadOnOnline: false,
+  fallbacks: {
+    document: "/dashboard",
+  },
+  workboxOptions: {
+    runtimeCaching: [
+      {
+        urlPattern: ({ url, sameOrigin }) =>
+          sameOrigin && url.pathname.startsWith("/dashboard"),
+        handler: "StaleWhileRevalidate",
+        options: {
+          cacheName: "dashboard-pages",
+          expiration: {
+            maxEntries: 16,
+            maxAgeSeconds: 7 * 24 * 60 * 60,
+          },
+        },
+        method: "GET",
+      },
+    ],
+  },
 });
 
 /** @type {import('next').NextConfig} */

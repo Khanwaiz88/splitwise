@@ -37,6 +37,8 @@ yarn-error.log*
 # PWA build artifacts (regenerated on `npm run build`)
 public/sw.js
 public/workbox-*.js
+public/fallback-*.js
+public/swe-worker-*.js
 
 # vercel
 .vercel

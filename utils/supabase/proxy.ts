@@ -42,7 +42,7 @@ export async function updateSession(request: NextRequest) {
       }
     )
 
-    // Refresh token if expired. Using getSession is fast (~5ms) and avoids synchronous network roundtrips to Auth server unless token is expired
+    // Refresh session from cookies (works offline; no network unless token expired)
     const { data: { session } } = await supabase.auth.getSession()
     const user = session?.user ?? null
 
@@ -51,9 +51,15 @@ export async function updateSession(request: NextRequest) {
 
     // Protected route redirects:
     // If user is not logged in and attempts to access dashboard, redirect to /login
+    // Skip redirect when offline cache may still load on the client (PWA)
     if (!user && pathname.startsWith('/dashboard')) {
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
+      const hasAuthCookie = request.cookies.getAll().some(
+        (c) => c.name.includes('auth-token') || c.name.startsWith('sb-'),
+      )
+      if (!hasAuthCookie) {
+        url.pathname = '/login'
+        return NextResponse.redirect(url)
+      }
     }
 
     // If user is logged in and attempts to access /login or landing, redirect to /dashboard
