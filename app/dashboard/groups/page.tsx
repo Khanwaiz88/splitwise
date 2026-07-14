@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { fetchMyGroups, createGroup, type GroupResponse } from '@/utils/groupsApi';
 import {
+  addPendingGroup,
+  getPendingGroups,
+  initOfflineDashboardForGroup,
+  isNetworkFailure,
+} from '@/utils/offlineQueue';
+import { resolveOfflineProfile } from '@/utils/profileCache';
+import { syncPendingGroups } from '@/utils/syncGroups';
+import {
   Users, Plus, Check, RefreshCw,
   FolderOpen, ArrowRight, WifiOff, ChevronDown, ChevronUp, Sparkles,
 } from 'lucide-react';
@@ -41,6 +49,7 @@ export default function GroupsPage() {
     if (!online) { setIsInitialLoad(false); return; }
 
     try {
+      await syncPendingGroups();
       const { groups: fetchedGroups, userId } = await fetchMyGroups();
       setGroups(fetchedGroups);
       setCurrentUserId(userId);
@@ -123,24 +132,66 @@ export default function GroupsPage() {
 
     const tempId = `temp-${Date.now()}`;
     const optimistic: GroupResponse = { id: tempId, name, memberCount: 1 };
-    setGroups((prev) => [optimistic, ...prev]);
+    const nextGroups = [optimistic, ...groups];
+
+    setGroups(nextGroups);
     setActiveGroupId(tempId);
     setNewGroupName('');
+    localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify(nextGroups));
     localStorage.setItem(ACTIVE_GROUP_KEY, tempId);
     window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupId: tempId } }));
+
+    const finishCreate = () => {
+      router.push('/dashboard');
+    };
+
+    if (!navigator.onLine) {
+      const profile = resolveOfflineProfile();
+      if (!profile?.id) {
+        toast.error('Open the app online once before creating groups offline.');
+        setGroups(groups);
+        return;
+      }
+      addPendingGroup({ tempId, name, createdAt: new Date().toISOString() });
+      initOfflineDashboardForGroup(tempId, name, {
+        id: profile.id,
+        email: profile.email,
+        display_name: profile.display_name,
+      });
+      toast.success(`Group "${name}" saved offline — will sync when online.`);
+      finishCreate();
+      return;
+    }
+
     toast.success(`Group "${name}" created!`);
-    router.push('/dashboard');
+    finishCreate();
 
     createGroup(name)
       .then(({ group: newGroup }) => {
-        setGroups((prev) => prev.map((g) => (g.id === tempId ? newGroup : g)));
+        const updated = nextGroups.map((g) => (g.id === tempId ? newGroup : g));
+        setGroups(updated);
+        localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify(updated));
         setActiveGroupId(newGroup.id);
         localStorage.setItem(ACTIVE_GROUP_KEY, newGroup.id);
         window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupId: newGroup.id } }));
       })
       .catch((err) => {
+        if (isNetworkFailure(err)) {
+          const profile = resolveOfflineProfile();
+          if (profile?.id) {
+            addPendingGroup({ tempId, name, createdAt: new Date().toISOString() });
+            initOfflineDashboardForGroup(tempId, name, {
+              id: profile.id,
+              email: profile.email,
+              display_name: profile.display_name,
+            });
+            toast.success(`Group "${name}" saved offline — will sync when online.`);
+            return;
+          }
+        }
         setGroups((prev) => prev.filter((g) => g.id !== tempId));
-        toast.error(err.message ?? 'Failed to create group.');
+        localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify(groups));
+        toast.error(err instanceof Error ? err.message : 'Failed to create group.');
       });
   };
 
@@ -165,12 +216,11 @@ export default function GroupsPage() {
       {isOffline && (
         <div className="alert-banner alert-banner-amber">
           <WifiOff size={16} className="shrink-0" />
-          <span>Offline — showing cached list.</span>
+          <span>Offline — cached list. New groups save locally and sync when online.</span>
         </div>
       )}
 
-      {!isOffline && (
-        <WidgetCard variant="violet" delay={60} hover={false}>
+      <WidgetCard variant="violet" delay={60} hover={false}>
           <div className="flex items-center gap-3 mb-5">
             <span className="icon-badge bg-violet-500/20 border border-violet-400/30 text-violet-200">
               <Sparkles size={18} />
@@ -202,7 +252,6 @@ export default function GroupsPage() {
             </button>
           </form>
         </WidgetCard>
-      )}
 
       <section className="page-section">
         <h2 className="section-title">

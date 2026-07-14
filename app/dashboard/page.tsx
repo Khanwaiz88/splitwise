@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { fetchDashboard, saveExpense, recordSettlement, deleteExpense } from '@/utils/dashboardApi';
 import { getPendingExpenses, removePendingExpense, getPendingSettlements, removePendingSettlement, addPendingSettlement, isNetworkFailure } from '@/utils/offlineQueue';
+import { syncPendingGroups } from '@/utils/syncGroups';
 import { loadProfileCache, saveProfileCache } from '@/utils/profileCache';
 import {
   calculateBalances,
@@ -187,7 +188,15 @@ function DashboardInner() {
     else if (silent) setIsRefreshing(true);
 
     try {
+      await syncPendingGroups();
       const groupId = overrideGroupId ?? localStorage.getItem(ACTIVE_GROUP_KEY) ?? undefined;
+
+      if (groupId?.startsWith('temp-')) {
+        loadOfflineData();
+        setIsInitialLoad(false);
+        return;
+      }
+
       const data = await fetchDashboard(groupId);
       applyData(data);
       hasLoadedOnce.current = true;
@@ -215,9 +224,11 @@ function DashboardInner() {
     loadData(undefined, false);
     const onOnline = () => {
       setIsOffline(false);
-      syncPendingExpenses();
-      syncPendingSettlements();
-      loadData(undefined, true);
+      syncPendingGroups().then(() => {
+        syncPendingExpenses();
+        syncPendingSettlements();
+        loadData(undefined, true);
+      });
     };
     const onOffline = () => setIsOffline(true);
     window.addEventListener('online', onOnline);

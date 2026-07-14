@@ -3,6 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
 import { fetchMyGroups, createGroup, type GroupResponse } from '@/utils/groupsApi';
+import {
+  addPendingGroup,
+  initOfflineDashboardForGroup,
+  isNetworkFailure,
+} from '@/utils/offlineQueue';
+import { resolveOfflineProfile } from '@/utils/profileCache';
+import { syncPendingGroups } from '@/utils/syncGroups';
 import ModalPortal from '@/components/ui/ModalPortal';
 import { ChevronDown, Plus, Check, X, Sparkles } from 'lucide-react';
 
@@ -28,6 +35,7 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
     if (!navigator.onLine) { setIsInitialLoad(false); return; }
 
     try {
+      await syncPendingGroups();
       const { groups: fetched } = await fetchMyGroups();
       const mapped: Group[] = fetched.map((g) => ({ id: g.id, name: g.name }));
       setGroups(mapped);
@@ -102,21 +110,78 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
 
     const tempId = `temp-${Date.now()}`;
     const optimistic: Group = { id: tempId, name };
+    const nextGroups = [optimistic, ...groups];
 
-    setGroups((prev) => [optimistic, ...prev]);
+    setGroups(nextGroups);
     setShowCreateModal(false);
     setNewGroupName('');
     switchGroup(optimistic);
+
+    const persistGroupsCache = (list: Group[]) => {
+      try {
+        const raw = localStorage.getItem(GROUPS_CACHE_KEY);
+        const full = raw ? JSON.parse(raw) as GroupResponse[] : [];
+        const withoutTemp = full.filter((g) => g.id !== tempId);
+        const optimisticFull: GroupResponse = { id: tempId, name, memberCount: 1 };
+        localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify([optimisticFull, ...withoutTemp]));
+      } catch {
+        localStorage.setItem(
+          GROUPS_CACHE_KEY,
+          JSON.stringify([{ id: tempId, name, memberCount: 1 }]),
+        );
+      }
+    };
+
+    persistGroupsCache(nextGroups);
+
+    if (!navigator.onLine) {
+      const profile = resolveOfflineProfile();
+      if (!profile?.id) {
+        toast.error('Open the app online once before creating groups offline.');
+        setGroups(groups);
+        return;
+      }
+      addPendingGroup({ tempId, name, createdAt: new Date().toISOString() });
+      initOfflineDashboardForGroup(tempId, name, {
+        id: profile.id,
+        email: profile.email,
+        display_name: profile.display_name,
+      });
+      toast.success(`Group "${name}" saved offline — will sync when online.`);
+      return;
+    }
+
     toast.success(`Group "${name}" created!`);
 
     createGroup(name)
       .then(({ group: newGroup }) => {
         setGroups((prev) => prev.map((g) => (g.id === tempId ? newGroup : g)));
+        try {
+          const raw = localStorage.getItem(GROUPS_CACHE_KEY);
+          const full = raw ? JSON.parse(raw) as GroupResponse[] : [];
+          localStorage.setItem(
+            GROUPS_CACHE_KEY,
+            JSON.stringify(full.map((g) => (g.id === tempId ? newGroup : g))),
+          );
+        } catch { /* ignore */ }
         switchGroup(newGroup);
       })
       .catch((err) => {
+        if (isNetworkFailure(err)) {
+          const profile = resolveOfflineProfile();
+          if (profile?.id) {
+            addPendingGroup({ tempId, name, createdAt: new Date().toISOString() });
+            initOfflineDashboardForGroup(tempId, name, {
+              id: profile.id,
+              email: profile.email,
+              display_name: profile.display_name,
+            });
+            toast.success(`Group "${name}" saved offline — will sync when online.`);
+            return;
+          }
+        }
         setGroups((prev) => prev.filter((g) => g.id !== tempId));
-        toast.error(err.message ?? 'Failed to create group.');
+        toast.error(err instanceof Error ? err.message : 'Failed to create group.');
       });
   };
 
