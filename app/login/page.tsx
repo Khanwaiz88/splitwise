@@ -10,9 +10,7 @@ import { Mail, Lock, Sparkles, AlertCircle, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   validateLoginEmail,
-  validateSignupEmail,
   validateSignupPassword,
-  SIGNUP_EMAIL_HINT,
   SIGNUP_PASSWORD_HINT,
 } from '@/utils/authValidation';
 
@@ -68,9 +66,7 @@ function LoginForm() {
       return '';
     }
 
-    const emailErr = prefilledEmail
-      ? validateLoginEmail(email)
-      : validateSignupEmail(email);
+    const emailErr = validateLoginEmail(email);
     if (emailErr) return emailErr;
 
     const passwordErr = validateSignupPassword(password);
@@ -156,16 +152,13 @@ function LoginForm() {
           disabled={loading || !!prefilledEmail}
           required
         />
-        {!isLogin && !prefilledEmail && (
-          <p className="text-xs text-white/40 -mt-3 px-1">{SIGNUP_EMAIL_HINT}</p>
-        )}
         <InputField
           icon={Lock}
           label="Password"
           type="password"
           value={password}
           onChange={setPassword}
-          placeholder={isLogin ? 'Enter your password' : 'Min. 8 characters'}
+          placeholder="Enter your password"
           disabled={loading}
           required
         />
