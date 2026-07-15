@@ -5,6 +5,7 @@ import type { Expense, Member } from '@/utils/splitMath';
 import { getExpenseShares, resolveMemberName } from '@/utils/splitMath';
 import ModalPortal from '@/components/ui/ModalPortal';
 import { avatarGradient } from '@/utils/avatarColor';
+import { formatMoney, type CurrencyCode, DEFAULT_CURRENCY } from '@/utils/currency';
 import { X, Receipt, Users, Wallet, PieChart, Pencil, Trash2 } from 'lucide-react';
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
   members: Member[];
   currentUserId?: string;
   groupName?: string;
+  currency?: CurrencyCode;
   onClose: () => void;
   onEdit: (expense: Expense) => void;
   onDelete: (expense: Expense) => void;
@@ -22,6 +24,7 @@ export default function ExpenseDetailModal({
   members,
   currentUserId,
   groupName,
+  currency = DEFAULT_CURRENCY,
   onClose,
   onEdit,
   onDelete,
@@ -94,7 +97,7 @@ export default function ExpenseDetailModal({
           <div className="text-center py-2">
             <p className="text-xl font-extrabold text-white">{expense.description}</p>
             <p className="text-4xl font-extrabold gradient-text mt-2">
-              ${expense.amount.toFixed(2)}
+              {formatMoney(expense.amount, currency)}
             </p>
             <p className="text-sm text-white/45 mt-2">Total amount</p>
           </div>
@@ -140,7 +143,7 @@ export default function ExpenseDetailModal({
                       <p className="text-xs text-white/40 mt-0.5">{share.detail}</p>
                     </div>
                     <p className="text-sm font-extrabold text-white shrink-0">
-                      ${share.amount.toFixed(2)}
+                      {formatMoney(share.amount, currency)}
                     </p>
                   </div>
                 );
@@ -152,7 +155,7 @@ export default function ExpenseDetailModal({
             <div className="flex items-center justify-between text-xs text-white/45 px-1 pt-1 border-t border-white/8">
               <span>Split total</span>
               <span className="font-bold text-white/70">
-                ${shares.reduce((s, x) => s + x.amount, 0).toFixed(2)}
+                {formatMoney(shares.reduce((s, x) => s + x.amount, 0), currency)}
               </span>
             </div>
           )}

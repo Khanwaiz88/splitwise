@@ -11,7 +11,9 @@ import {
 import { resolveOfflineProfile } from '@/utils/profileCache';
 import { syncPendingGroups } from '@/utils/syncGroups';
 import ModalPortal from '@/components/ui/ModalPortal';
+import CurrencySelect from '@/components/CurrencySelect';
 import { ChevronDown, Plus, Check, X, Sparkles } from 'lucide-react';
+import { type CurrencyCode, DEFAULT_CURRENCY } from '@/utils/currency';
 
 type Group = Pick<GroupResponse, 'id' | 'name'>;
 
@@ -28,6 +30,7 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupCurrency, setNewGroupCurrency] = useState<CurrencyCode>(DEFAULT_CURRENCY);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const fetchGroups = useCallback(async (silent = false) => {
@@ -111,10 +114,12 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
     const tempId = `temp-${Date.now()}`;
     const optimistic: Group = { id: tempId, name };
     const nextGroups = [optimistic, ...groups];
+    const selectedCurrency = newGroupCurrency;
 
     setGroups(nextGroups);
     setShowCreateModal(false);
     setNewGroupName('');
+    setNewGroupCurrency(DEFAULT_CURRENCY);
     switchGroup(optimistic);
 
     const persistGroupsCache = (list: Group[]) => {
@@ -122,12 +127,12 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
         const raw = localStorage.getItem(GROUPS_CACHE_KEY);
         const full = raw ? JSON.parse(raw) as GroupResponse[] : [];
         const withoutTemp = full.filter((g) => g.id !== tempId);
-        const optimisticFull: GroupResponse = { id: tempId, name, memberCount: 1 };
+        const optimisticFull: GroupResponse = { id: tempId, name, currency: selectedCurrency, memberCount: 1 };
         localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify([optimisticFull, ...withoutTemp]));
       } catch {
         localStorage.setItem(
           GROUPS_CACHE_KEY,
-          JSON.stringify([{ id: tempId, name, memberCount: 1 }]),
+          JSON.stringify([{ id: tempId, name, currency: selectedCurrency, memberCount: 1 }]),
         );
       }
     };
@@ -141,19 +146,19 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
         setGroups(groups);
         return;
       }
-      addPendingGroup({ tempId, name, createdAt: new Date().toISOString() });
+      addPendingGroup({ tempId, name, currency: selectedCurrency, createdAt: new Date().toISOString() });
       initOfflineDashboardForGroup(tempId, name, {
         id: profile.id,
         email: profile.email,
         display_name: profile.display_name,
-      });
+      }, selectedCurrency);
       toast.success(`Group "${name}" saved offline — will sync when online.`);
       return;
     }
 
     toast.success(`Group "${name}" created!`);
 
-    createGroup(name)
+    createGroup(name, selectedCurrency)
       .then(({ group: newGroup }) => {
         setGroups((prev) => prev.map((g) => (g.id === tempId ? newGroup : g)));
         try {
@@ -170,12 +175,12 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
         if (isNetworkFailure(err)) {
           const profile = resolveOfflineProfile();
           if (profile?.id) {
-            addPendingGroup({ tempId, name, createdAt: new Date().toISOString() });
+            addPendingGroup({ tempId, name, currency: selectedCurrency, createdAt: new Date().toISOString() });
             initOfflineDashboardForGroup(tempId, name, {
               id: profile.id,
               email: profile.email,
               display_name: profile.display_name,
-            });
+            }, selectedCurrency);
             toast.success(`Group "${name}" saved offline — will sync when online.`);
             return;
           }
@@ -263,6 +268,7 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
                   className="input-field py-3.5"
                 />
               </div>
+              <CurrencySelect id="switcher-group-currency" value={newGroupCurrency} onChange={setNewGroupCurrency} />
               <button type="submit" disabled={!newGroupName.trim()} className="w-full btn-gradient py-3.5 rounded-xl font-extrabold disabled:opacity-50">
                 Create Group
               </button>

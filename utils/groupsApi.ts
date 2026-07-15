@@ -1,3 +1,5 @@
+import type { CurrencyCode } from '@/utils/currency';
+
 export type GroupMember = {
   id: string;
   display_name: string;
@@ -8,6 +10,7 @@ export type GroupMember = {
 export type GroupResponse = {
   id: string;
   name: string;
+  currency?: CurrencyCode;
   created_at?: string;
   memberCount: number;
   members?: GroupMember[];
@@ -38,12 +41,15 @@ export async function fetchMyGroups(): Promise<GroupsListResult> {
   return data as GroupsListResult;
 }
 
-export async function createGroup(name: string): Promise<CreateGroupResult> {
+export async function createGroup(
+  name: string,
+  currency: CurrencyCode = 'USD',
+): Promise<CreateGroupResult> {
   const res = await fetch('/api/groups', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, currency }),
   });
 
   const data = await res.json();

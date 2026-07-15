@@ -1,9 +1,11 @@
 import type { Expense, Settlement } from '@/utils/splitMath';
+import type { CurrencyCode } from '@/utils/currency';
 
 export type DashboardData = {
   user: { id: string; email?: string | null };
   groupId: string | null;
   groupName: string | null;
+  currency: CurrencyCode;
   members: { id: string; display_name: string; email: string }[];
   expenses: Expense[];
   settlements: Settlement[];

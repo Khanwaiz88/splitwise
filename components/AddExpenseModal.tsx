@@ -9,6 +9,7 @@ import { addPendingExpense } from '@/utils/offlineQueue';
 import ModalPortal from '@/components/ui/ModalPortal';
 import { X, Receipt, Sparkles, Users, FolderOpen } from 'lucide-react';
 import { avatarGradient } from '@/utils/avatarColor';
+import { formatMoney, type CurrencyCode, DEFAULT_CURRENCY } from '@/utils/currency';
 
 type SplitType = 'equal' | 'exact' | 'percentage';
 
@@ -18,6 +19,7 @@ type Props = {
   currentUser: { id: string } | null;
   groupId: string | null;
   groupName?: string;
+  currency?: CurrencyCode;
   editExpense?: Expense | null;
   onClose?: () => void;
   onOptimisticAdd?: (expense: Expense) => void;
@@ -32,6 +34,7 @@ function memberLabel(m: Member, currentUserId?: string) {
 
 export default function AddExpenseModal({
   isOpen, members, currentUser, groupId, groupName = 'Your Group',
+  currency = DEFAULT_CURRENCY,
   editExpense = null,
   onClose,
   onOptimisticAdd, onSaveFailed, onSaveConfirmed, onExpenseUpdated,
@@ -119,7 +122,7 @@ export default function AddExpenseModal({
         parsedSplits[m.id] = val;
       }
       if (splitType === 'exact' && Math.abs(exactSum - totalAmount) > 0.01) {
-        toast.error(`Exact splits must total $${totalAmount.toFixed(2)}.`);
+        toast.error(`Exact splits must total ${formatMoney(totalAmount, currency)}.`);
         return;
       }
       if (splitType === 'percentage' && Math.abs(percentSum - 100) > 0.01) {
@@ -264,7 +267,7 @@ export default function AddExpenseModal({
 
             <div className="form-row-2">
               <div className="form-field">
-                <label className="form-label" htmlFor="expense-amount">Amount ($)</label>
+                <label className="form-label" htmlFor="expense-amount">Amount ({currency})</label>
                 <input
                   id="expense-amount"
                   type="number"
@@ -355,7 +358,7 @@ export default function AddExpenseModal({
                   }`}>
                     {splitType === 'percentage'
                       ? `${percentSum.toFixed(1)}% / 100%`
-                      : `$${exactSum.toFixed(2)} / $${parseFloat(amount || '0').toFixed(2)}`}
+                      : `${formatMoney(exactSum, currency)} / ${formatMoney(parseFloat(amount || '0'), currency)}`}
                   </span>
                 </div>
                 {loadedMembers.map((m) => {

@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { PROFILE_FIELDS } from '@/utils/profileMap';
+import { formatMoney, normalizeCurrency } from '@/utils/currency';
 
 /** POST /api/settlements — record a settle-up payment */
 export async function POST(request: Request) {
@@ -94,7 +95,15 @@ export async function POST(request: Request) {
 
     const fromName = nameOf(fromUser);
     const toName = nameOf(toUser);
-    const desc = `${fromName} paid ${toName} $${amount.toFixed(2)}`;
+
+    const { data: groupRow } = await supabase
+      .from('groups')
+      .select('currency')
+      .eq('id', groupId)
+      .single();
+    const currency = normalizeCurrency(groupRow?.currency);
+    const amountLabel = formatMoney(amount, currency);
+    const desc = `${fromName} paid ${toName} ${amountLabel}`;
 
     supabase
       .from('activity_log')

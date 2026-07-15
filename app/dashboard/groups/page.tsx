@@ -20,9 +20,11 @@ import PageHeader from '@/components/ui/PageHeader';
 import WidgetCard from '@/components/ui/WidgetCard';
 import GroupMembersList from '@/components/GroupMembersList';
 import InviteMember from '@/components/InviteMember';
+import CurrencySelect from '@/components/CurrencySelect';
 import { removeMemberFromGroup } from '@/utils/membersApi';
 import type { Member } from '@/utils/splitMath';
 import { avatarGradient } from '@/utils/avatarColor';
+import { type CurrencyCode, DEFAULT_CURRENCY, normalizeCurrency } from '@/utils/currency';
 
 const ACTIVE_GROUP_KEY = 'splitwise_active_group';
 const GROUPS_CACHE_KEY = 'splitwise_groups_cache';
@@ -40,6 +42,7 @@ export default function GroupsPage() {
   const [loadingMembersId, setLoadingMembersId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupCurrency, setNewGroupCurrency] = useState<CurrencyCode>(DEFAULT_CURRENCY);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
   const [fetchError, setFetchError] = useState('');
@@ -190,12 +193,13 @@ export default function GroupsPage() {
     if (!name) return;
 
     const tempId = `temp-${Date.now()}`;
-    const optimistic: GroupResponse = { id: tempId, name, memberCount: 1 };
+    const optimistic: GroupResponse = { id: tempId, name, currency: newGroupCurrency, memberCount: 1 };
     const nextGroups = [optimistic, ...groups];
 
     setGroups(nextGroups);
     setActiveGroupId(tempId);
     setNewGroupName('');
+    setNewGroupCurrency(DEFAULT_CURRENCY);
     localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify(nextGroups));
     localStorage.setItem(ACTIVE_GROUP_KEY, tempId);
     window.dispatchEvent(new CustomEvent('groupChanged', { detail: { groupId: tempId } }));
@@ -211,12 +215,12 @@ export default function GroupsPage() {
         setGroups(groups);
         return;
       }
-      addPendingGroup({ tempId, name, createdAt: new Date().toISOString() });
+      addPendingGroup({ tempId, name, currency: newGroupCurrency, createdAt: new Date().toISOString() });
       initOfflineDashboardForGroup(tempId, name, {
         id: profile.id,
         email: profile.email,
         display_name: profile.display_name,
-      });
+      }, newGroupCurrency);
       toast.success(`Group "${name}" saved offline — will sync when online.`);
       finishCreate();
       return;
@@ -225,7 +229,7 @@ export default function GroupsPage() {
     toast.success(`Group "${name}" created!`);
     finishCreate();
 
-    createGroup(name)
+    createGroup(name, newGroupCurrency)
       .then(({ group: newGroup }) => {
         const updated = nextGroups.map((g) => (g.id === tempId ? newGroup : g));
         setGroups(updated);
@@ -238,12 +242,12 @@ export default function GroupsPage() {
         if (isNetworkFailure(err)) {
           const profile = resolveOfflineProfile();
           if (profile?.id) {
-            addPendingGroup({ tempId, name, createdAt: new Date().toISOString() });
+            addPendingGroup({ tempId, name, currency: newGroupCurrency, createdAt: new Date().toISOString() });
             initOfflineDashboardForGroup(tempId, name, {
               id: profile.id,
               email: profile.email,
               display_name: profile.display_name,
-            });
+            }, newGroupCurrency);
             toast.success(`Group "${name}" saved offline — will sync when online.`);
             return;
           }
@@ -302,6 +306,7 @@ export default function GroupsPage() {
                 className="input-field py-3.5"
               />
             </div>
+            <CurrencySelect value={newGroupCurrency} onChange={setNewGroupCurrency} />
             <button
               type="submit"
               disabled={!newGroupName.trim()}
@@ -356,6 +361,9 @@ export default function GroupsPage() {
                         <h3 className="font-extrabold text-white truncate text-base">{group.name}</h3>
                         <p className="text-sm text-white/45 mt-1 font-medium">
                           {group.memberCount} member{group.memberCount !== 1 ? 's' : ''}
+                          {group.currency && group.currency !== 'USD' && (
+                            <span className="ml-2 text-cyan-300/80">· {group.currency}</span>
+                          )}
                         </p>
                       </div>
                     </div>

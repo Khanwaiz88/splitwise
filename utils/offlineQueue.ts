@@ -13,6 +13,7 @@ export type PendingSettlement = NewSettlementPayload & {
 export type PendingGroup = {
   tempId: string;
   name: string;
+  currency?: string;
   createdAt: string;
 };
 
@@ -97,7 +98,7 @@ export function remapTempGroupId(tempId: string, realId: string, groupName: stri
   try {
     const raw = localStorage.getItem(GROUPS_CACHE_KEY);
     if (raw) {
-      const groups = JSON.parse(raw) as Array<{ id: string; name: string; memberCount?: number }>;
+      const groups = JSON.parse(raw) as Array<{ id: string; name: string; currency?: string; memberCount?: number }>;
       localStorage.setItem(
         GROUPS_CACHE_KEY,
         JSON.stringify(
@@ -134,6 +135,7 @@ export function initOfflineDashboardForGroup(
   tempId: string,
   groupName: string,
   user: { id: string; email?: string | null; display_name?: string },
+  currency = 'USD',
 ): void {
   if (typeof window === 'undefined') return;
   const member = {
@@ -150,6 +152,7 @@ export function initOfflineDashboardForGroup(
       currentUser: { id: user.id, email: user.email ?? null },
       groupId: tempId,
       groupName,
+      currency,
     }),
   );
 }

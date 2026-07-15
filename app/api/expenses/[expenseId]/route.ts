@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
+import { formatMoney, normalizeCurrency } from '@/utils/currency';
 
 function mapExpense(row: {
   id: string;
@@ -71,12 +72,20 @@ export async function PATCH(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const { data: groupRow } = await supabase
+      .from('groups')
+      .select('currency')
+      .eq('id', existing.group_id)
+      .single();
+    const currency = normalizeCurrency(groupRow?.currency);
+    const amountLabel = formatMoney(Number(amount), currency);
+
     supabase
       .from('activity_log')
       .insert({
         group_id: existing.group_id,
         user_id: user.id,
-        description: `updated expense "${description.trim()}" to $${Number(amount).toFixed(2)}`,
+        description: `updated expense "${description.trim()}" to ${amountLabel}`,
       })
       .then(({ error: logErr }) => {
         if (logErr) console.warn('[PATCH /api/expenses] activity log:', logErr.message);
@@ -123,12 +132,20 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const { data: groupRow } = await supabase
+      .from('groups')
+      .select('currency')
+      .eq('id', existing.group_id)
+      .single();
+    const currency = normalizeCurrency(groupRow?.currency);
+    const amountLabel = formatMoney(Number(existing.amount), currency);
+
     supabase
       .from('activity_log')
       .insert({
         group_id: existing.group_id,
         user_id: user.id,
-        description: `deleted expense "${existing.description}" ($${Number(existing.amount).toFixed(2)})`,
+        description: `deleted expense "${existing.description}" (${amountLabel})`,
       })
       .then(({ error: logErr }) => {
         if (logErr) console.warn('[DELETE /api/expenses] activity log:', logErr.message);

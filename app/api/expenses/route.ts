@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
+import { formatMoney, normalizeCurrency } from '@/utils/currency';
 
 /** POST /api/expenses — save expense + log activity */
 export async function POST(request: Request) {
@@ -39,13 +40,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const { data: groupRow } = await supabase
+      .from('groups')
+      .select('currency')
+      .eq('id', group_id)
+      .single();
+    const currency = normalizeCurrency(groupRow?.currency);
+    const amountLabel = formatMoney(Number(amount), currency);
+
     // Non-blocking activity log
     supabase
       .from('activity_log')
       .insert({
         group_id,
         user_id: user.id,
-        description: `added expense "${description.trim()}" of $${Number(amount).toFixed(2)}`,
+        description: `added expense "${description.trim()}" of ${amountLabel}`,
       })
       .then(({ error: logErr }) => {
         if (logErr) console.warn('[POST /api/expenses] activity log:', logErr.message);

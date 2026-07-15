@@ -3,9 +3,13 @@ import { NextResponse } from 'next/server';
 import type { GroupResponse, GroupMember } from '@/utils/groupsApi';
 import { mapProfileToMember, PROFILE_FIELDS } from '@/utils/profileMap';
 
+import type { CurrencyCode } from '@/utils/currency';
+import { normalizeCurrency } from '@/utils/currency';
+
 type RpcGroupRow = {
   id: string;
   name: string;
+  currency?: string;
   created_at?: string;
   member_count: number;
 };
@@ -114,6 +118,7 @@ export async function GET() {
       const groups: GroupResponse[] = (rpcRows as RpcGroupRow[]).map((g) => ({
         id: g.id,
         name: g.name,
+        currency: normalizeCurrency(g.currency),
         created_at: g.created_at ?? undefined,
         memberCount: Number(g.member_count) || 1,
       }));
@@ -150,7 +155,7 @@ export async function GET() {
 
     const { data: groupRows, error: groupsError } = await supabase
       .from('groups')
-      .select('id, name, created_at')
+      .select('id, name, currency, created_at')
       .in('id', groupIds)
       .order('name');
 
@@ -172,6 +177,7 @@ export async function GET() {
     const groups: GroupResponse[] = (groupRows ?? []).map((g) => ({
       id: g.id,
       name: g.name,
+      currency: normalizeCurrency(g.currency),
       created_at: g.created_at ?? undefined,
       memberCount: countsMap[g.id] ?? 1,
     }));
@@ -200,6 +206,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const currency = normalizeCurrency(typeof body.currency === 'string' ? body.currency : undefined);
 
     if (!name) {
       return NextResponse.json({ error: 'Group name is required' }, { status: 400 });
@@ -208,19 +215,21 @@ export async function POST(request: Request) {
     // Primary: SECURITY DEFINER RPC
     const { data: rpcGroup, error: rpcError } = await supabase.rpc(
       'create_group_with_member',
-      { p_name: name },
+      { p_name: name, p_currency: currency },
     );
 
     if (!rpcError && rpcGroup) {
       const g = rpcGroup as {
         id: string;
         name: string;
+        currency?: string;
         created_at?: string;
         memberCount?: number;
       };
       const group: GroupResponse = {
         id: g.id,
         name: g.name,
+        currency: normalizeCurrency(g.currency),
         created_at: g.created_at,
         memberCount: g.memberCount ?? 1,
       };
@@ -234,8 +243,8 @@ export async function POST(request: Request) {
     // Fallback: direct inserts
     const { data: newGroup, error: groupError } = await supabase
       .from('groups')
-      .insert({ name })
-      .select('id, name, created_at')
+      .insert({ name, currency })
+      .select('id, name, currency, created_at')
       .single();
 
     if (groupError) {
@@ -272,6 +281,7 @@ export async function POST(request: Request) {
     const group: GroupResponse = {
       id: newGroup.id,
       name: newGroup.name,
+      currency: normalizeCurrency(newGroup.currency),
       created_at: newGroup.created_at,
       memberCount: 1,
     };

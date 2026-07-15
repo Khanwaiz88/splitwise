@@ -2,6 +2,7 @@ import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { mapProfileToMember, PROFILE_FIELDS } from '@/utils/profileMap';
 import type { Member } from '@/utils/splitMath';
+import { normalizeCurrency } from '@/utils/currency';
 
 /** GET /api/dashboard?groupId=xxx — single fast fetch for dashboard data */
 export async function GET(request: Request) {
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
         user: { id: user.id, email: user.email },
         groupId: null,
         groupName: null,
+        currency: 'USD',
         members: [],
         expenses: [],
         settlements: [],
@@ -43,7 +45,7 @@ export async function GET(request: Request) {
     }
 
     const [groupRes, expensesRes, settlementsRes, rpcMembersRes] = await Promise.all([
-      supabase.from('groups').select('name').eq('id', groupId).single(),
+      supabase.from('groups').select('name, currency').eq('id', groupId).single(),
       supabase
         .from('expenses')
         .select('id, description, amount, paid_by, splits, split_type, created_at')
@@ -130,6 +132,7 @@ export async function GET(request: Request) {
       user: { id: user.id, email: user.email },
       groupId,
       groupName: groupRes.data?.name ?? 'Your Group',
+      currency: normalizeCurrency(groupRes.data?.currency),
       members,
       expenses,
       settlements,

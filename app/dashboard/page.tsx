@@ -17,6 +17,7 @@ import {
   type Settlement,
   type Transaction,
 } from '@/utils/splitMath';
+import { formatMoney, type CurrencyCode, DEFAULT_CURRENCY, normalizeCurrency } from '@/utils/currency';
 import AddExpenseModal from '@/components/AddExpenseModal';
 import ExpenseDetailModal from '@/components/ExpenseDetailModal';
 import InviteMember from '@/components/InviteMember';
@@ -43,6 +44,7 @@ function DashboardInner() {
   const [currentUser, setCurrentUser] = useState<{ id: string; email?: string | null } | null>(null);
   const [currentGroupId, setCurrentGroupId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState('Your Group');
+  const [currency, setCurrency] = useState<CurrencyCode>(DEFAULT_CURRENCY);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
@@ -74,6 +76,7 @@ function DashboardInner() {
       setCurrentUser(d.currentUser ?? null);
       setCurrentGroupId(d.groupId ?? null);
       setGroupName(d.groupName ?? 'Your Group');
+      setCurrency(normalizeCurrency(d.currency));
       return true;
     } catch {
       return false;
@@ -88,6 +91,7 @@ function DashboardInner() {
       currentUser: { id: string; email?: string | null } | null;
       groupId: string | null;
       groupName: string;
+      currency?: CurrencyCode;
     }>,
   ) => {
     try {
@@ -135,6 +139,7 @@ function DashboardInner() {
     setCurrentUser(data.user);
     setCurrentGroupId(data.groupId);
     setGroupName(data.groupName ?? 'Your Group');
+    setCurrency(normalizeCurrency(data.currency));
     setMembers(data.members);
     setExpenses(data.expenses);
     const pendingSettlements = getPendingSettlements().map((p) => ({
@@ -162,6 +167,7 @@ function DashboardInner() {
       currentUser: data.user,
       groupId: data.groupId,
       groupName: data.groupName,
+      currency: normalizeCurrency(data.currency),
     }));
 
     const me = data.members.find((m) => m.id === data.user.id);
@@ -352,6 +358,11 @@ function DashboardInner() {
   const totalGroupSpend = expenses.reduce((s, e) => s + e.amount, 0);
   const isSettledUp = myBalance ? Math.abs(myBalance.netBalance) < 0.01 : true;
   const memberName = (id: string) => resolveMemberName(members, id, currentUser?.id);
+  const fmt = (amount: number) => formatMoney(amount, currency);
+  const fmtSigned = (amount: number) => {
+    if (amount > 0) return `+${formatMoney(amount, currency)}`;
+    return formatMoney(amount, currency);
+  };
 
   const balanceAmount = myBalance?.netBalance ?? 0;
 
@@ -474,7 +485,7 @@ function DashboardInner() {
         </div>
         <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
           <span className={`text-sm font-extrabold ${tone === 'owe' ? 'text-rose-300' : tone === 'owed' ? 'text-lime-300' : 'gradient-text'}`}>
-            ${tx.amount.toFixed(2)}
+            {fmt(tx.amount)}
           </span>
           {showRecord && (
             <button
@@ -525,7 +536,7 @@ function DashboardInner() {
           <div className="relative z-10 p-1">
             <p className="text-xs font-bold uppercase tracking-widest text-violet-300/70 mb-2">Total Group Spend</p>
             <p className="text-4xl md:text-5xl font-extrabold text-white tracking-tight">
-              ${totalGroupSpend.toFixed(2)}
+              {fmt(totalGroupSpend)}
             </p>
             <p className="text-sm text-white/45 mt-2 font-medium">
               {expenses.length} expense{expenses.length !== 1 ? 's' : ''} · {members.length} member{members.length !== 1 ? 's' : ''}
@@ -539,7 +550,7 @@ function DashboardInner() {
             Your Balance
           </div>
           <p className={`stat-pill-value ${isSettledUp ? 'text-white/80' : balanceAmount > 0 ? 'text-lime-300' : 'text-rose-300'}`}>
-            {balanceAmount > 0 ? '+' : ''}${balanceAmount.toFixed(2)}
+            {fmtSigned(balanceAmount)}
           </p>
           <p className="stat-pill-hint">
             {isSettledUp ? 'All settled up' : balanceAmount > 0 ? 'Owed to you' : 'You owe'}
@@ -588,7 +599,7 @@ function DashboardInner() {
           ) : (
             <WidgetCard variant="violet" delay={180} hover={false} className="py-4 px-4">
               <p className={`text-lg font-extrabold ${balanceAmount > 0 ? 'text-lime-300' : 'text-rose-300'}`}>
-                {balanceAmount > 0 ? '+' : ''}${balanceAmount.toFixed(2)} overall
+                {fmtSigned(balanceAmount)} overall
               </p>
               <p className="text-xs text-white/45 mt-1">
                 {balanceAmount > 0 ? 'Total owed to you in this group' : 'Total you owe in this group'}
@@ -629,7 +640,7 @@ function DashboardInner() {
                     </p>
                   </div>
                   <span className={`text-sm font-extrabold ml-3 shrink-0 ${positive ? 'text-lime-300' : 'text-rose-300'}`}>
-                    {positive ? '+' : ''}${Math.abs(b.netBalance).toFixed(2)}
+                    {fmtSigned(b.netBalance)}
                   </span>
                 </div>
               );
@@ -705,7 +716,7 @@ function DashboardInner() {
                     {date && <p className="text-xs text-white/40 mt-0.5">{date}</p>}
                   </div>
                   <span className="text-sm font-extrabold text-lime-300 ml-3 shrink-0">
-                    ${s.amount.toFixed(2)}
+                    {fmt(s.amount)}
                   </span>
                 </div>
               );
@@ -749,7 +760,7 @@ function DashboardInner() {
                     </p>
                   </div>
                 </div>
-                <span className="text-sm font-extrabold text-white ml-3 shrink-0">${exp.amount.toFixed(2)}</span>
+                <span className="text-sm font-extrabold text-white ml-3 shrink-0">{fmt(exp.amount)}</span>
               </button>
             ))}
           </div>
@@ -787,6 +798,7 @@ function DashboardInner() {
         currentUser={currentUser}
         groupId={currentGroupId}
         groupName={groupName}
+        currency={currency}
         onClose={() => {
           if (editingExpense) setEditingExpense(null);
           else router.replace('/dashboard');
@@ -802,6 +814,7 @@ function DashboardInner() {
         members={members}
         currentUserId={currentUser?.id}
         groupName={groupName}
+        currency={currency}
         onClose={() => setSelectedExpense(null)}
         onEdit={(expense) => {
           setSelectedExpense(null);

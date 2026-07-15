@@ -1,4 +1,5 @@
 import { createGroup } from '@/utils/groupsApi';
+import { normalizeCurrency, type CurrencyCode } from '@/utils/currency';
 import {
   getPendingGroups,
   removePendingGroup,
@@ -15,7 +16,10 @@ export async function syncPendingGroups(): Promise<boolean> {
 
   for (const item of pending) {
     try {
-      const { group } = await createGroup(item.name);
+      const { group } = await createGroup(
+        item.name,
+        normalizeCurrency(item.currency) as CurrencyCode,
+      );
       remapTempGroupId(item.tempId, group.id, group.name);
       removePendingGroup(item.tempId);
       syncedAny = true;
