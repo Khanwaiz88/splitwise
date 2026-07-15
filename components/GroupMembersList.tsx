@@ -2,7 +2,7 @@
 
 import type { Member } from '@/utils/splitMath';
 import { avatarGradient, avatarShadow } from '@/utils/avatarColor';
-import { Users } from 'lucide-react';
+import { Users, UserMinus, Loader2 } from 'lucide-react';
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -17,6 +17,9 @@ type GroupMembersListProps = {
   title?: string;
   compact?: boolean;
   embedded?: boolean;
+  canManage?: boolean;
+  removingId?: string | null;
+  onRemove?: (member: Member) => void;
 };
 
 export default function GroupMembersList({
@@ -25,6 +28,9 @@ export default function GroupMembersList({
   title = 'Members',
   compact = false,
   embedded = false,
+  canManage = false,
+  removingId = null,
+  onRemove,
 }: GroupMembersListProps) {
   if (members.length === 0) {
     return (
@@ -38,6 +44,8 @@ export default function GroupMembersList({
   const listClass = embedded
     ? 'space-y-2.5'
     : `widget ${compact ? 'widget-compact' : ''} space-y-2.5`;
+
+  const showRemove = canManage && !!onRemove && members.length > 1;
 
   return (
     <div>
@@ -58,6 +66,9 @@ export default function GroupMembersList({
           const label = member.display_name || member.email || 'Unknown';
           const grad = avatarGradient(member.id);
           const shadow = avatarShadow(member.id);
+          const isRemoving = removingId === member.id;
+          const canRemoveThis = showRemove && !isRemoving;
+
           return (
             <div
               key={member.id}
@@ -75,11 +86,26 @@ export default function GroupMembersList({
                   <p className="text-xs text-white/40 truncate">{member.email}</p>
                 )}
               </div>
-              {isYou && (
+              {isYou ? (
                 <span className="text-[10px] font-extrabold text-violet-300 bg-violet-500/20 px-2.5 py-1 rounded-full border border-violet-500/30 shrink-0">
                   You
                 </span>
-              )}
+              ) : canRemoveThis ? (
+                <button
+                  type="button"
+                  onClick={() => onRemove?.(member)}
+                  disabled={!!removingId}
+                  className="shrink-0 p-2 rounded-lg text-rose-300/80 hover:text-rose-200 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/30 transition-colors disabled:opacity-50"
+                  aria-label={`Remove ${label}`}
+                  title="Remove member"
+                >
+                  {isRemoving ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <UserMinus size={16} />
+                  )}
+                </button>
+              ) : null}
             </div>
           );
         })}

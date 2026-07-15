@@ -19,6 +19,9 @@ import {
 import PageHeader from '@/components/ui/PageHeader';
 import WidgetCard from '@/components/ui/WidgetCard';
 import GroupMembersList from '@/components/GroupMembersList';
+import InviteMember from '@/components/InviteMember';
+import { removeMemberFromGroup } from '@/utils/membersApi';
+import type { Member } from '@/utils/splitMath';
 import { avatarGradient } from '@/utils/avatarColor';
 
 const ACTIVE_GROUP_KEY = 'splitwise_active_group';
@@ -40,6 +43,7 @@ export default function GroupsPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isOffline, setIsOffline] = useState(false);
   const [fetchError, setFetchError] = useState('');
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   const loadGroups = useCallback(async (silent = false) => {
     if (!silent && !hasLoadedOnce.current && groups.length === 0) setIsInitialLoad(true);
@@ -102,8 +106,10 @@ export default function GroupsPage() {
 
     setExpandedGroupId(group.id);
 
+    if (!navigator.onLine) return;
+
     const hasMembers = (group.members?.length ?? 0) > 0;
-    if (hasMembers || group.memberCount <= 0) return;
+    if (hasMembers) return;
 
     setLoadingMembersId(group.id);
     try {
@@ -124,6 +130,59 @@ export default function GroupsPage() {
       setLoadingMembersId(null);
     }
   }, [expandedGroupId]);
+
+  const persistGroupsCache = useCallback((updater: (prev: GroupResponse[]) => GroupResponse[]) => {
+    setGroups((prev) => {
+      const next = updater(prev);
+      localStorage.setItem(GROUPS_CACHE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const handleMemberAdded = useCallback((groupId: string, member: Member) => {
+    persistGroupsCache((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g;
+        const members = g.members ?? [];
+        if (members.some((m) => m.id === member.id)) return g;
+        return {
+          ...g,
+          members: [...members, member],
+          memberCount: members.length + 1,
+        };
+      }),
+    );
+  }, [persistGroupsCache]);
+
+  const handleMemberRemoved = useCallback(async (group: GroupResponse, member: Member) => {
+    if (group.id.startsWith('temp-')) {
+      toast.error('Sync this group online before removing members.');
+      return;
+    }
+    if (!navigator.onLine) {
+      toast.error('Connect to the internet to remove a member.');
+      return;
+    }
+    const label = member.display_name || member.email || 'Member';
+    if (!window.confirm(`Remove ${label} from "${group.name}"?`)) return;
+
+    setRemovingMemberId(member.id);
+    try {
+      await removeMemberFromGroup(group.id, member.id);
+      persistGroupsCache((prev) =>
+        prev.map((g) => {
+          if (g.id !== group.id) return g;
+          const members = (g.members ?? []).filter((m) => m.id !== member.id);
+          return { ...g, members, memberCount: Math.max(members.length, 1) };
+        }),
+      );
+      toast.success(`${label} removed from group.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove member');
+    } finally {
+      setRemovingMemberId(null);
+    }
+  }, [persistGroupsCache]);
 
   const handleCreateGroup = (e: React.FormEvent) => {
     e.preventDefault();
@@ -338,12 +397,25 @@ export default function GroupsPage() {
                             ))}
                           </div>
                         ) : (
-                          <GroupMembersList
-                            members={group.members ?? []}
-                            currentUserId={currentUserId ?? undefined}
-                            compact
-                            embedded
-                          />
+                          <div className="space-y-4">
+                            <GroupMembersList
+                              members={group.members ?? []}
+                              currentUserId={currentUserId ?? undefined}
+                              compact
+                              embedded
+                              canManage={!isOffline && !group.id.startsWith('temp-')}
+                              removingId={removingMemberId}
+                              onRemove={(member) => handleMemberRemoved(group, member)}
+                            />
+                            {!isOffline && currentUserId && !group.id.startsWith('temp-') && (
+                              <InviteMember
+                                groupId={group.id}
+                                currentUserId={currentUserId}
+                                existingMemberIds={(group.members ?? []).map((m) => m.id)}
+                                onMemberAdded={(member) => handleMemberAdded(group.id, member)}
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

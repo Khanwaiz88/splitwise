@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
+import { removeMemberFromGroup } from '@/utils/membersApi';
 import { fetchDashboard, saveExpense, recordSettlement, deleteExpense } from '@/utils/dashboardApi';
 import { getPendingExpenses, removePendingExpense, getPendingSettlements, removePendingSettlement, addPendingSettlement, isNetworkFailure } from '@/utils/offlineQueue';
 import { syncPendingGroups } from '@/utils/syncGroups';
@@ -48,6 +49,7 @@ function DashboardInner() {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [recordingKey, setRecordingKey] = useState<string | null>(null);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   const loadOfflineData = useCallback(() => {
     try {
@@ -275,8 +277,41 @@ function DashboardInner() {
   }, []);
 
   const handleMemberAdded = useCallback((member: Member) => {
-    setMembers((prev) => (prev.some((m) => m.id === member.id) ? prev : [...prev, member]));
-  }, []);
+    setMembers((prev) => {
+      if (prev.some((m) => m.id === member.id)) return prev;
+      const next = [...prev, member];
+      persistOfflineSnapshot({ members: next });
+      return next;
+    });
+  }, [persistOfflineSnapshot]);
+
+  const handleMemberRemoved = useCallback(async (member: Member) => {
+    if (!currentGroupId || currentGroupId.startsWith('temp-')) {
+      toast.error('Sync this group online before removing members.');
+      return;
+    }
+    if (!navigator.onLine) {
+      toast.error('Connect to the internet to remove a member.');
+      return;
+    }
+    const label = member.display_name || member.email || 'Member';
+    if (!window.confirm(`Remove ${label} from this group?`)) return;
+
+    setRemovingMemberId(member.id);
+    try {
+      await removeMemberFromGroup(currentGroupId, member.id);
+      setMembers((prev) => {
+        const next = prev.filter((m) => m.id !== member.id);
+        persistOfflineSnapshot({ members: next });
+        return next;
+      });
+      toast.success(`${label} removed from group.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to remove member');
+    } finally {
+      setRemovingMemberId(null);
+    }
+  }, [currentGroupId, persistOfflineSnapshot]);
 
   const handleExpenseUpdated = useCallback((updated: Expense) => {
     setExpenses((prev) => {
@@ -723,11 +758,17 @@ function DashboardInner() {
 
       {currentGroupId && members.length > 0 && (
         <section className="animate-fade-in-up delay-5">
-          <GroupMembersList members={members} currentUserId={currentUser?.id} />
+          <GroupMembersList
+            members={members}
+            currentUserId={currentUser?.id}
+            canManage={!isOffline && !!currentGroupId && !currentGroupId.startsWith('temp-')}
+            removingId={removingMemberId}
+            onRemove={handleMemberRemoved}
+          />
         </section>
       )}
 
-      {currentGroupId && currentUser && (
+      {currentGroupId && currentUser && !currentGroupId.startsWith('temp-') && (
         <section className="animate-fade-in-up delay-6">
           <InviteMember
             groupId={currentGroupId}
