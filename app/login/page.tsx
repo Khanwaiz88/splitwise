@@ -36,6 +36,12 @@ function LoginForm() {
   }, [prefilledEmail, startSignup]);
 
   const afterAuth = async () => {
+    const nextPath = searchParams.get('next');
+    const destination =
+      nextPath && nextPath.startsWith('/dashboard') && !nextPath.startsWith('//')
+        ? nextPath
+        : '/dashboard';
+
     if (inviteToken) {
       try {
         const result = await acceptGroupInvite(inviteToken);
@@ -48,7 +54,7 @@ function LoginForm() {
         return;
       }
     }
-    router.push('/dashboard');
+    router.push(destination);
   };
 
   const handleToggle = () => {

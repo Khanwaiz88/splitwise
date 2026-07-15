@@ -1,6 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+function safeRedirectPath(raw: string | null): string {
+  if (!raw || !raw.startsWith('/dashboard') || raw.startsWith('//')) {
+    return '/dashboard'
+  }
+  return raw
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
     request: {
@@ -26,13 +33,13 @@ export async function updateSession(request: NextRequest) {
             return request.cookies.getAll()
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
+            cookiesToSet.forEach(({ name, value }) => {
               request.cookies.set(name, value)
-              response = NextResponse.next({
-                request: {
-                  headers: request.headers,
-                },
-              })
+            })
+            response = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
             })
             cookiesToSet.forEach(({ name, value, options }) => {
               response.cookies.set(name, value, options)
@@ -42,29 +49,23 @@ export async function updateSession(request: NextRequest) {
       }
     )
 
-    // Refresh session from cookies (works offline; no network unless token expired)
-    const { data: { session } } = await supabase.auth.getSession()
-    const user = session?.user ?? null
+    // getUser refreshes the session cookie — required for SSR auth on refresh
+    const { data: { user } } = await supabase.auth.getUser()
 
     const url = request.nextUrl.clone()
     const pathname = url.pathname
 
-    // Protected route redirects:
-    // If user is not logged in and attempts to access dashboard, redirect to /login
-    // Skip redirect when offline cache may still load on the client (PWA)
     if (!user && pathname.startsWith('/dashboard')) {
-      const hasAuthCookie = request.cookies.getAll().some(
-        (c) => c.name.includes('auth-token') || c.name.startsWith('sb-'),
-      )
-      if (!hasAuthCookie) {
-        url.pathname = '/login'
-        return NextResponse.redirect(url)
-      }
+      url.pathname = '/login'
+      url.searchParams.set('next', `${pathname}${url.search}`)
+      return NextResponse.redirect(url)
     }
 
-    // If user is logged in and attempts to access /login or landing, redirect to /dashboard
     if (user && (pathname === '/login' || pathname === '/')) {
-      url.pathname = '/dashboard'
+      const destination = safeRedirectPath(url.searchParams.get('next'))
+      const destUrl = new URL(destination, request.url)
+      url.pathname = destUrl.pathname
+      url.search = destUrl.search
       return NextResponse.redirect(url)
     }
   } catch (err) {

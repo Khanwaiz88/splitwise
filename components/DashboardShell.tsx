@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { loadProfileCache, resolveOfflineProfile } from '@/utils/profileCache';
 import MeshBackground from '@/components/ui/MeshBackground';
@@ -39,6 +39,8 @@ export default function DashboardShell({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState<ShellUser | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -47,18 +49,18 @@ export default function DashboardShell({
 
     async function init() {
       const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
 
-      if (session?.user) {
+      if (authUser) {
         const profile = loadProfileCache();
         if (!cancelled) {
           setUser({
-            id: session.user.id,
+            id: authUser.id,
             displayName:
               profile?.display_name?.trim() ||
-              session.user.email?.split('@')[0] ||
+              authUser.email?.split('@')[0] ||
               'User',
-            email: profile?.email ?? session.user.email ?? '',
+            email: profile?.email ?? authUser.email ?? '',
           });
           setReady(true);
         }
@@ -82,14 +84,16 @@ export default function DashboardShell({
         return;
       }
 
-      router.replace('/login');
+      const qs = searchParams.toString();
+      const next = encodeURIComponent(`${pathname}${qs ? `?${qs}` : ''}`);
+      router.replace(`/login?next=${next}`);
     }
 
     init();
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, pathname, searchParams]);
 
   if (!ready || !user) {
     return (
