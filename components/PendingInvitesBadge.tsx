@@ -1,35 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Inbox } from 'lucide-react';
-import { fetchPendingInvites } from '@/utils/invitesApi';
+import { usePendingInviteCount } from '@/utils/usePendingInviteCount';
 
 export default function PendingInvitesBadge({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname();
   const active = pathname === '/dashboard/invites';
-  const [count, setCount] = useState(0);
-
-  const load = useCallback(async () => {
-    if (!navigator.onLine) return;
-    try {
-      const { count: c } = await fetchPendingInvites();
-      setCount(c);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 60_000);
-    window.addEventListener('invitesChanged', load);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('invitesChanged', load);
-    };
-  }, [load]);
+  const count = usePendingInviteCount();
 
   if (compact) {
     return (

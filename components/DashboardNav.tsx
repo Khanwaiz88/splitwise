@@ -6,6 +6,7 @@ import { Home, PlusCircle, Activity, Users, Sparkles, User, Inbox } from 'lucide
 import GroupSwitcher from '@/components/GroupSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import PendingInvitesBadge from '@/components/PendingInvitesBadge';
+import { usePendingInviteCount } from '@/utils/usePendingInviteCount';
 import { avatarGradient } from '@/utils/avatarColor';
 
 const NAV_ITEMS = [
@@ -54,6 +55,7 @@ export default function DashboardNav({
   const isAddActive = pathname === '/dashboard' && action === 'add';
   const isProfileActive = pathname === '/dashboard/profile';
   const grad = avatarGradient(userId);
+  const pendingInviteCount = usePendingInviteCount();
 
   return (
     <>
@@ -127,14 +129,18 @@ export default function DashboardNav({
 
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 nav-bar-solid border-t pb-safe">
-        <div className="flex items-end justify-around px-2 pt-2.5 pb-2">
-          {NAV_ITEMS.filter((item) => item.href !== '/dashboard/profile' && item.href !== '/dashboard/invites').map(({ href, label, icon: Icon, match }) => {
+        <div className="flex items-end justify-around px-1 pt-2.5 pb-2">
+          {NAV_ITEMS.filter((item) =>
+            item.href !== '/dashboard/profile' &&
+            item.href !== '/dashboard/activity' &&
+            item.href !== '/dashboard/invites',
+          ).map(({ href, label, icon: Icon, match }) => {
             const active = match(pathname, action ?? '');
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl transition-all ${
+                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[52px] ${
                   active ? 'text-violet-300' : 'text-white/40'
                 }`}
               >
@@ -143,6 +149,23 @@ export default function DashboardNav({
               </Link>
             );
           })}
+
+          <Link
+            href="/dashboard/invites"
+            className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[52px] ${
+              pathname === '/dashboard/invites' ? 'text-violet-300' : 'text-white/40'
+            }`}
+          >
+            <span className="relative">
+              <Inbox size={21} strokeWidth={pathname === '/dashboard/invites' ? 2.5 : 2} />
+              {pendingInviteCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center rounded-full bg-rose-500 text-white text-[8px] font-extrabold">
+                  {pendingInviteCount > 9 ? '9+' : pendingInviteCount}
+                </span>
+              )}
+            </span>
+            <span className="text-[10px] font-semibold">Invites</span>
+          </Link>
 
           <Link href="/dashboard?action=add" className="flex flex-col items-center gap-0.5 px-1 -mt-5">
             <span className="w-14 h-14 rounded-2xl btn-gradient flex items-center justify-center shadow-xl shadow-violet-500/40 ring-4 ring-[var(--bg-base)]">
