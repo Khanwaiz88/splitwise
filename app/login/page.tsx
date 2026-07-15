@@ -8,6 +8,13 @@ import MeshBackground from '@/components/ui/MeshBackground';
 import InputField from '@/components/ui/InputField';
 import { Mail, Lock, Sparkles, AlertCircle, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  validateLoginEmail,
+  validateSignupEmail,
+  validateSignupPassword,
+  SIGNUP_EMAIL_HINT,
+  SIGNUP_PASSWORD_HINT,
+} from '@/utils/authValidation';
 
 function LoginForm() {
   const router = useRouter();
@@ -54,11 +61,22 @@ function LoginForm() {
   };
 
   const validate = () => {
-    if (!email) return 'Email is required.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Please enter a valid email address.';
-    if (!password) return 'Password is required.';
-    if (password.length < 6) return 'Password must be at least 6 characters.';
-    if (!isLogin && password !== confirmPassword) return 'Passwords do not match.';
+    if (isLogin) {
+      const emailErr = validateLoginEmail(email);
+      if (emailErr) return emailErr;
+      if (!password) return 'Password is required.';
+      return '';
+    }
+
+    const emailErr = prefilledEmail
+      ? validateLoginEmail(email)
+      : validateSignupEmail(email);
+    if (emailErr) return emailErr;
+
+    const passwordErr = validateSignupPassword(password);
+    if (passwordErr) return passwordErr;
+
+    if (password !== confirmPassword) return 'Passwords do not match.';
     return '';
   };
 
@@ -138,16 +156,22 @@ function LoginForm() {
           disabled={loading || !!prefilledEmail}
           required
         />
+        {!isLogin && !prefilledEmail && (
+          <p className="text-xs text-white/40 -mt-3 px-1">{SIGNUP_EMAIL_HINT}</p>
+        )}
         <InputField
           icon={Lock}
           label="Password"
           type="password"
           value={password}
           onChange={setPassword}
-          placeholder="Enter your password"
+          placeholder={isLogin ? 'Enter your password' : 'Min. 8 characters'}
           disabled={loading}
           required
         />
+        {!isLogin && (
+          <p className="text-xs text-white/40 -mt-3 px-1">{SIGNUP_PASSWORD_HINT}</p>
+        )}
         {!isLogin && (
           <InputField
             icon={Lock}
