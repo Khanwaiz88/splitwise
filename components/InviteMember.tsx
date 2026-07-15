@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { sendGroupInvite } from '@/utils/invitesApi';
-import { addMemberByEmail, addGuestMemberByName } from '@/utils/membersApi';
+import { addGuestMemberByName } from '@/utils/membersApi';
 import type { Member } from '@/utils/splitMath';
 import { toast } from 'react-hot-toast';
 import {
-  UserPlus, Search, Loader2, X, Link2, Copy, UserCheck, CheckCircle2, UserRound,
+  UserPlus, Search, Loader2, X, Link2, Copy, CheckCircle2, UserRound, Mail,
 } from 'lucide-react';
 
 type Profile = { id: string; display_name?: string; email?: string };
@@ -31,7 +31,6 @@ export default function InviteMember({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Profile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [isAdding, setIsAdding] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
   const [isAddingGuest, setIsAddingGuest] = useState(false);
   const [inviteLinkUrl, setInviteLinkUrl] = useState('');
@@ -63,27 +62,6 @@ export default function InviteMember({
 
   const resetInvite = () => setInviteLinkUrl('');
 
-  const addExistingUser = async (email: string) => {
-    setIsAdding(true);
-    resetInvite();
-    try {
-      const member = await addMemberByEmail(groupId, email.trim().toLowerCase());
-      onMemberAdded({
-        id: member.id,
-        display_name: member.display_name,
-        email: member.email,
-        is_guest: member.is_guest,
-      });
-      toast.success(`${member.display_name} added to group!`);
-      setQuery('');
-      setResults([]);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to add member');
-    } finally {
-      setIsAdding(false);
-    }
-  };
-
   const addGuestByName = async () => {
     if (!nameValid) {
       toast.error('Enter a valid name (2–30 chars, start with a letter).');
@@ -113,23 +91,28 @@ export default function InviteMember({
     }
   };
 
-  const createInvite = async () => {
-    const email = trimmed.toLowerCase();
-    if (!emailValid) { toast.error('Enter a valid email address.'); return; }
+  const createInvite = async (email: string) => {
+    const normalized = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+      toast.error('Enter a valid email address.');
+      return;
+    }
     setIsInviting(true);
     resetInvite();
     try {
-      const result = await sendGroupInvite(groupId, email);
+      const result = await sendGroupInvite(groupId, normalized);
       setInviteLinkUrl(result.joinUrl);
       if (result.emailSent) {
         toast.success(result.hasAccount
-          ? 'Invite sent! They will see it in the app and by email.'
-          : 'Invite sent by email! Share the link too if needed.');
+          ? 'Invite sent! They will see Accept/Decline in their Invites tab.'
+          : 'Invite sent by email! They must sign up, then Accept or Decline.');
       } else if (result.emailSkipped) {
-        toast.success('Invite saved — copy the link below (configure SMTP for email).');
+        toast.success('Invite saved — they will see it in the app after login.');
       } else {
-        toast.success('Invite created — copy the link below.');
+        toast.success('Invite created — they must Accept to join the group.');
       }
+      setQuery('');
+      setResults([]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to send invite');
     } finally {
@@ -142,7 +125,7 @@ export default function InviteMember({
     toast.success('Link copied!');
   };
 
-  const busy = isAdding || isInviting || isAddingGuest;
+  const busy = isInviting || isAddingGuest;
 
   return (
     <div>
@@ -176,28 +159,21 @@ export default function InviteMember({
         </div>
 
         {emailValid && (
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => addExistingUser(query)}
-              disabled={busy}
-              className="flex flex-col items-center gap-1.5 py-4 px-2 rounded-xl bg-gradient-to-br from-lime-500/15 to-emerald-500/10 border border-lime-500/30 text-lime-300 hover:border-lime-400/50 disabled:opacity-50 transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              {isAdding ? <Loader2 size={20} className="animate-spin" /> : <UserCheck size={20} />}
-              <span className="text-xs font-extrabold">Add to Group</span>
-              <span className="text-[10px] text-lime-300/60 text-center leading-tight">Skip invite</span>
-            </button>
-            <button
-              type="button"
-              onClick={createInvite}
-              disabled={busy}
-              className="flex flex-col items-center gap-1.5 py-4 px-2 rounded-xl bg-gradient-to-br from-cyan-500/15 to-sky-500/10 border border-cyan-500/30 text-cyan-300 hover:border-cyan-400/50 disabled:opacity-50 transition-all hover:scale-[1.02] active:scale-[0.98]"
-            >
-              {isInviting ? <Loader2 size={20} className="animate-spin" /> : <Link2 size={20} />}
-              <span className="text-xs font-extrabold">Send Invite</span>
-              <span className="text-[10px] text-cyan-300/60 text-center leading-tight">Email + app</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => createInvite(trimmed)}
+            disabled={busy}
+            className="w-full flex items-center justify-center gap-2.5 py-4 px-3 rounded-xl bg-gradient-to-br from-cyan-500/15 to-sky-500/10 border border-cyan-500/30 text-cyan-300 hover:border-cyan-400/50 disabled:opacity-50 transition-all"
+          >
+            {isInviting ? <Loader2 size={20} className="animate-spin" /> : <Mail size={20} />}
+            <span className="text-sm font-extrabold">Send Invite</span>
+          </button>
+        )}
+
+        {emailValid && (
+          <p className="text-xs text-white/40 px-1 -mt-2">
+            They must <strong className="text-white/60">Accept</strong> the invite before joining — no auto-add.
+          </p>
         )}
 
         {!emailValid && nameValid && (
@@ -247,11 +223,11 @@ export default function InviteMember({
                   ) : (
                     <button
                       type="button"
-                      onClick={() => p.email && addExistingUser(p.email)}
-                      disabled={isAdding}
-                      className="shrink-0 px-3 py-1.5 text-xs font-extrabold bg-lime-500/20 text-lime-300 hover:bg-lime-500/30 rounded-lg border border-lime-500/30 transition-all"
+                      onClick={() => p.email && createInvite(p.email)}
+                      disabled={isInviting}
+                      className="shrink-0 px-3 py-1.5 text-xs font-extrabold bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 rounded-lg border border-cyan-500/30 transition-all flex items-center gap-1"
                     >
-                      Add
+                      <Link2 size={12} /> Invite
                     </button>
                   )}
                 </div>
@@ -262,7 +238,7 @@ export default function InviteMember({
 
         {!isSearching && emailValid && results.length === 0 && (
           <p className="text-xs text-white/40 px-1">
-            No user found — use <strong className="text-cyan-300">Send Invite</strong> for email + app notification.
+            No registered user found — invite will be sent to this email address.
           </p>
         )}
 
