@@ -86,26 +86,33 @@ export default function GroupMembersList({
                   <p className="text-xs text-white/40 truncate">{member.email}</p>
                 )}
               </div>
-              {isYou ? (
-                <span className="text-[10px] font-extrabold text-violet-300 bg-violet-500/20 px-2.5 py-1 rounded-full border border-violet-500/30 shrink-0">
-                  You
-                </span>
-              ) : canRemoveThis ? (
-                <button
-                  type="button"
-                  onClick={() => onRemove?.(member)}
-                  disabled={!!removingId}
-                  className="shrink-0 p-2 rounded-lg text-rose-300/80 hover:text-rose-200 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/30 transition-colors disabled:opacity-50"
-                  aria-label={`Remove ${label}`}
-                  title="Remove member"
-                >
-                  {isRemoving ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <UserMinus size={16} />
-                  )}
-                </button>
-              ) : null}
+              <div className="flex items-center gap-2 shrink-0">
+                {member.is_guest && (
+                  <span className="text-[10px] font-extrabold text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-full border border-amber-500/30">
+                    Guest
+                  </span>
+                )}
+                {isYou ? (
+                  <span className="text-[10px] font-extrabold text-violet-300 bg-violet-500/20 px-2.5 py-1 rounded-full border border-violet-500/30">
+                    You
+                  </span>
+                ) : canRemoveThis ? (
+                  <button
+                    type="button"
+                    onClick={() => onRemove?.(member)}
+                    disabled={!!removingId}
+                    className="p-2 rounded-lg text-rose-300/80 hover:text-rose-200 hover:bg-rose-500/15 border border-transparent hover:border-rose-500/30 transition-colors disabled:opacity-50"
+                    aria-label={`Remove ${label}`}
+                    title="Remove member"
+                  >
+                    {isRemoving ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <UserMinus size={16} />
+                    )}
+                  </button>
+                ) : null}
+              </div>
             </div>
           );
         })}

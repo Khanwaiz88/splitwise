@@ -412,6 +412,7 @@ export default function GroupsPage() {
                                 groupId={group.id}
                                 currentUserId={currentUserId}
                                 existingMemberIds={(group.members ?? []).map((m) => m.id)}
+                                existingMemberNames={(group.members ?? []).map((m) => m.display_name)}
                                 onMemberAdded={(member) => handleMemberAdded(group.id, member)}
                               />
                             )}

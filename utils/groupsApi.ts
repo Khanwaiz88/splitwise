@@ -2,6 +2,7 @@ export type GroupMember = {
   id: string;
   display_name: string;
   email: string;
+  is_guest?: boolean;
 };
 
 export type GroupResponse = {

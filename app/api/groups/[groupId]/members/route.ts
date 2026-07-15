@@ -8,6 +8,7 @@ type MemberRow = {
   user_id: string;
   display_name: string;
   email: string;
+  is_guest?: boolean;
 };
 
 export async function GET(
@@ -32,6 +33,7 @@ export async function GET(
         id: r.user_id,
         display_name: r.display_name,
         email: r.email,
+        is_guest: r.is_guest ?? false,
       }));
       return NextResponse.json({ members });
     }

@@ -64,10 +64,12 @@ export async function GET(request: Request) {
         user_id: string;
         display_name: string;
         email: string;
+        is_guest?: boolean;
       }>).map((r) => ({
         id: r.user_id,
         display_name: r.display_name,
         email: r.email,
+        is_guest: r.is_guest ?? false,
       }));
     } else {
       const { data: membershipsRes } = await supabase

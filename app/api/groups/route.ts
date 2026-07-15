@@ -29,12 +29,14 @@ async function attachMembersToGroups(
       user_id: string;
       display_name: string;
       email: string;
+      is_guest?: boolean;
     }>) {
       if (!membersByGroup[row.group_id]) membersByGroup[row.group_id] = [];
       membersByGroup[row.group_id].push({
         id: row.user_id,
         display_name: row.display_name,
         email: row.email,
+        is_guest: row.is_guest ?? false,
       });
     }
 

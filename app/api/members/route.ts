@@ -1,7 +1,42 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
-/** POST /api/members — add existing user to group by email */
+const NAME_PATTERN = /^[A-Za-z][A-Za-z0-9 ]{1,29}$/;
+
+async function assertGroupMembership(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  groupId: string,
+  userId: string,
+) {
+  const { data: membership } = await supabase
+    .from('group_members')
+    .select('group_id')
+    .eq('group_id', groupId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (!membership) {
+    return NextResponse.json({ error: 'You are not a member of this group' }, { status: 403 });
+  }
+  return null;
+}
+
+async function isDisplayNameTaken(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  groupId: string,
+  displayName: string,
+) {
+  const normalized = displayName.trim().toLowerCase();
+  const { data: rows } = await supabase.rpc('get_groups_members', {
+    p_group_ids: [groupId],
+  });
+  return (rows ?? []).some(
+    (row: { display_name?: string }) =>
+      (row.display_name ?? '').trim().toLowerCase() === normalized,
+  );
+}
+
+/** POST /api/members — add by email (registered user) or displayName (guest) */
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -13,9 +48,67 @@ export async function POST(request: Request) {
     const body = await request.json();
     const groupId = body.groupId as string;
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
 
-    if (!groupId || !email) {
-      return NextResponse.json({ error: 'groupId and email are required' }, { status: 400 });
+    if (!groupId) {
+      return NextResponse.json({ error: 'groupId is required' }, { status: 400 });
+    }
+
+    const membershipErr = await assertGroupMembership(supabase, groupId, user.id);
+    if (membershipErr) return membershipErr;
+
+    // ── Guest member by name only ─────────────────────────────────────────
+    if (displayName && !email) {
+      if (!NAME_PATTERN.test(displayName)) {
+        return NextResponse.json(
+          { error: 'Name must start with a letter, be 2–30 characters, and use letters/numbers/spaces only.' },
+          { status: 400 },
+        );
+      }
+
+      if (await isDisplayNameTaken(supabase, groupId, displayName)) {
+        return NextResponse.json(
+          { error: 'A member with this name already exists in the group.' },
+          { status: 409 },
+        );
+      }
+
+      const { data: guest, error: guestErr } = await supabase
+        .from('group_guest_members')
+        .insert({ group_id: groupId, display_name: displayName })
+        .select('id, display_name')
+        .single();
+
+      if (guestErr) {
+        if (guestErr.code === '23505') {
+          return NextResponse.json(
+            { error: 'A member with this name already exists in the group.' },
+            { status: 409 },
+          );
+        }
+        return NextResponse.json({ error: guestErr.message }, { status: 500 });
+      }
+
+      supabase
+        .from('activity_log')
+        .insert({
+          group_id: groupId,
+          user_id: user.id,
+          description: `added guest member "${guest.display_name}"`,
+        })
+        .then(({ error }) => { if (error) console.warn('[activity_log]', error.message); });
+
+      return NextResponse.json({
+        id: guest.id,
+        email: '',
+        display_name: guest.display_name,
+        is_guest: true,
+      });
+    }
+
+    // ── Registered user by email ────────────────────────────────────────────
+    if (!email) {
+      return NextResponse.json({ error: 'email or displayName is required' }, { status: 400 });
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -24,17 +117,6 @@ export async function POST(request: Request) {
 
     if (email === user.email?.toLowerCase()) {
       return NextResponse.json({ error: 'You cannot add yourself' }, { status: 400 });
-    }
-
-    const { data: membership } = await supabase
-      .from('group_members')
-      .select('group_id')
-      .eq('group_id', groupId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'You are not a member of this group' }, { status: 403 });
     }
 
     const { data: profile, error: profileErr } = await supabase
@@ -49,7 +131,7 @@ export async function POST(request: Request) {
 
     if (!profile) {
       return NextResponse.json(
-        { error: 'No account found with this email. Use "Send Invite Link" instead.' },
+        { error: 'No account found with this email. Use "Invite Link" or "Add by Name".' },
         { status: 404 },
       );
     }
@@ -89,6 +171,7 @@ export async function POST(request: Request) {
       id: profile.id,
       email: profile.email,
       display_name: profile.display_name ?? profile.email,
+      is_guest: false,
     });
   } catch (err) {
     console.error('[POST /api/members]', err);
@@ -96,7 +179,7 @@ export async function POST(request: Request) {
   }
 }
 
-/** DELETE /api/members — remove a member from a group */
+/** DELETE /api/members — remove a registered or guest member */
 export async function DELETE(request: Request) {
   try {
     const supabase = await createClient();
@@ -113,15 +196,37 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'groupId and userId are required' }, { status: 400 });
     }
 
-    const { data: requesterMembership } = await supabase
-      .from('group_members')
-      .select('group_id')
+    const membershipErr = await assertGroupMembership(supabase, groupId, user.id);
+    if (membershipErr) return membershipErr;
+
+    const { data: guest } = await supabase
+      .from('group_guest_members')
+      .select('id, display_name')
       .eq('group_id', groupId)
-      .eq('user_id', user.id)
+      .eq('id', userId)
       .maybeSingle();
 
-    if (!requesterMembership) {
-      return NextResponse.json({ error: 'You are not a member of this group' }, { status: 403 });
+    if (guest) {
+      const { error: deleteGuestErr } = await supabase
+        .from('group_guest_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('id', userId);
+
+      if (deleteGuestErr) {
+        return NextResponse.json({ error: deleteGuestErr.message }, { status: 500 });
+      }
+
+      supabase
+        .from('activity_log')
+        .insert({
+          group_id: groupId,
+          user_id: user.id,
+          description: `removed guest member "${guest.display_name}"`,
+        })
+        .then(({ error }) => { if (error) console.warn('[activity_log]', error.message); });
+
+      return NextResponse.json({ success: true });
     }
 
     const { data: targetMembership } = await supabase
@@ -146,7 +251,7 @@ export async function DELETE(request: Request) {
 
     if ((count ?? 0) <= 1) {
       return NextResponse.json(
-        { error: 'Cannot remove the last member. Delete the group instead.' },
+        { error: 'Cannot remove the last registered member from the group.' },
         { status: 400 },
       );
     }
@@ -168,17 +273,12 @@ export async function DELETE(request: Request) {
     }
 
     const removedName = targetProfile?.display_name ?? targetProfile?.email ?? 'a member';
-    const action =
-      userId === user.id
-        ? 'left the group'
-        : `removed ${removedName} from the group`;
-
     supabase
       .from('activity_log')
       .insert({
         group_id: groupId,
         user_id: user.id,
-        description: action,
+        description: `removed ${removedName} from the group`,
       })
       .then(({ error }) => { if (error) console.warn('[activity_log]', error.message); });
 

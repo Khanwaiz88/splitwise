@@ -30,13 +30,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Payer and receiver must be different' }, { status: 400 });
     }
 
-    const { data: members } = await supabase
-      .from('group_members')
-      .select('user_id')
-      .eq('group_id', groupId);
+    const { data: rpcRows, error: rpcError } = await supabase.rpc('get_groups_members', {
+      p_group_ids: [groupId],
+    });
 
-    const memberIds = new Set((members ?? []).map((m) => m.user_id));
-    if (!memberIds.has(fromUser) || !memberIds.has(toUser)) {
+    const participantIds = new Set<string>();
+    if (!rpcError && rpcRows) {
+      for (const row of rpcRows as Array<{ user_id: string }>) {
+        participantIds.add(row.user_id);
+      }
+    } else {
+      const { data: members } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId);
+      (members ?? []).forEach((m) => participantIds.add(m.user_id));
+      const { data: guests } = await supabase
+        .from('group_guest_members')
+        .select('id')
+        .eq('group_id', groupId);
+      (guests ?? []).forEach((g) => participantIds.add(g.id));
+    }
+
+    if (!participantIds.has(fromUser) || !participantIds.has(toUser)) {
       return NextResponse.json({ error: 'Both users must be group members' }, { status: 400 });
     }
 
@@ -45,7 +61,17 @@ export async function POST(request: Request) {
       .select(PROFILE_FIELDS)
       .in('id', [fromUser, toUser]);
 
+    const { data: guestRows } = await supabase
+      .from('group_guest_members')
+      .select('id, display_name')
+      .eq('group_id', groupId)
+      .in('id', [fromUser, toUser]);
+
+    const guestNameMap = new Map((guestRows ?? []).map((g) => [g.id, g.display_name]));
+
     const nameOf = (id: string) => {
+      const guestName = guestNameMap.get(id);
+      if (guestName) return guestName.trim();
       const p = profiles?.find((x) => x.id === id);
       return p?.display_name?.trim() || p?.email?.split('@')[0] || 'Member';
     };

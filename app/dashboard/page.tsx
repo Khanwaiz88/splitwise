@@ -774,6 +774,7 @@ function DashboardInner() {
             groupId={currentGroupId}
             currentUserId={currentUser.id}
             existingMemberIds={members.map((m) => m.id)}
+            existingMemberNames={members.map((m) => m.display_name)}
             onMemberAdded={handleMemberAdded}
           />
         </section>
