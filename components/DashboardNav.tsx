@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, PlusCircle, Activity, Users, Sparkles, User } from 'lucide-react';
 import GroupSwitcher from '@/components/GroupSwitcher';
+import ThemeToggle from '@/components/ThemeToggle';
 import { avatarGradient } from '@/utils/avatarColor';
 
 const NAV_ITEMS = [
@@ -55,17 +56,20 @@ export default function DashboardNav({
   return (
     <>
       {/* Mobile top bar — group switcher (sidebar is desktop-only) */}
-      <div className="md:hidden fixed top-0 inset-x-0 z-40 glass border-b border-white/10 pt-safe">
-        <div className="px-4 pb-3">
-          <p className="text-[10px] font-bold text-violet-300/50 uppercase tracking-widest mb-1.5 px-0.5">
-            Active Group
-          </p>
-          <GroupSwitcher userId={userId} />
+      <div className="md:hidden fixed top-0 inset-x-0 z-50 nav-bar-solid border-b pt-safe">
+        <div className="px-4 pb-3 pt-1 flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest mb-1.5 px-0.5">
+              Active Group
+            </p>
+            <GroupSwitcher userId={userId} />
+          </div>
+          <ThemeToggle compact />
         </div>
       </div>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 shrink-0 glass border-r border-white/8 h-screen sticky top-0 p-6 gap-5 overflow-y-auto z-40">
+      <aside className="hidden md:flex flex-col w-64 shrink-0 nav-bar-solid border-r h-screen sticky top-0 p-6 gap-5 overflow-y-auto z-40">
         <div className="mb-2 px-1 animate-fade-in-up">
           <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity group">
             <span className="icon-badge bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/40 group-hover:scale-105 transition-transform">
@@ -75,8 +79,8 @@ export default function DashboardNav({
           </Link>
         </div>
 
-        <div className="animate-fade-in-up delay-1 shrink-0">
-          <p className="text-[10px] font-bold text-violet-300/50 uppercase tracking-widest px-1 mb-2">Active Group</p>
+        <div className="animate-fade-in-up delay-1 shrink-0 space-y-3">
+          <p className="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest px-1">Active Group</p>
           <GroupSwitcher userId={userId} />
         </div>
 
@@ -96,26 +100,29 @@ export default function DashboardNav({
           </Link>
         </nav>
 
-        <Link
-          href="/dashboard/profile"
-          className={`mt-auto pt-4 border-t border-white/8 animate-fade-in-up delay-3 flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
-            isProfileActive
-              ? 'bg-violet-500/15 border border-violet-500/25'
-              : 'hover:bg-white/5 border border-transparent'
-          }`}
-        >
-          <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shrink-0 shadow-lg`}>
-            <span className="text-xs font-extrabold text-white">{profileInitials(displayName)}</span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-white truncate">{displayName}</p>
-            <p className="text-xs text-white/40 truncate">{userEmail}</p>
-          </div>
-        </Link>
+        <div className="animate-fade-in-up delay-3 space-y-3 pt-4 border-t border-[var(--border-subtle)]">
+          <ThemeToggle />
+          <Link
+            href="/dashboard/profile"
+            className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
+              isProfileActive
+                ? 'bg-violet-500/15 border border-violet-500/25'
+                : 'hover:bg-white/5 border border-transparent'
+            }`}
+          >
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shrink-0 shadow-lg`}>
+              <span className="text-xs font-extrabold text-white">{profileInitials(displayName)}</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white truncate">{displayName}</p>
+              <p className="text-xs text-white/40 truncate">{userEmail}</p>
+            </div>
+          </Link>
+        </div>
       </aside>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 glass border-t border-white/10 pb-safe">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 nav-bar-solid border-t pb-safe">
         <div className="flex items-end justify-around px-2 pt-2.5 pb-2">
           {NAV_ITEMS.filter((item) => item.href !== '/dashboard/profile').map(({ href, label, icon: Icon, match }) => {
             const active = match(pathname, action ?? '');
@@ -134,7 +141,7 @@ export default function DashboardNav({
           })}
 
           <Link href="/dashboard?action=add" className="flex flex-col items-center gap-0.5 px-1 -mt-5">
-            <span className="w-14 h-14 rounded-2xl btn-gradient flex items-center justify-center shadow-xl shadow-violet-500/40 ring-4 ring-[#0c0a14]">
+            <span className="w-14 h-14 rounded-2xl btn-gradient flex items-center justify-center shadow-xl shadow-violet-500/40 ring-4 ring-[var(--bg-base)]">
               <PlusCircle size={26} className="text-white" />
             </span>
             <span className="text-[10px] font-bold text-violet-300 mt-1">Add</span>

@@ -135,7 +135,7 @@ export default function DashboardShell({
   }
 
   return (
-    <div className="min-h-screen text-white flex relative">
+    <div className="min-h-screen text-[var(--fg)] flex relative">
       <MeshBackground />
       <Suspense fallback={null}>
         <DashboardNav

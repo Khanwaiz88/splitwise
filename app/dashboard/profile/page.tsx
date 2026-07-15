@@ -12,8 +12,9 @@ import {
   type CachedProfile,
 } from '@/utils/profileCache';
 import {
-  User, Mail, Calendar, LogOut, Save, Shield, Sparkles, WifiOff,
+  User, Mail, Calendar, LogOut, Save, Shield, Sparkles, WifiOff, Palette,
 } from 'lucide-react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -219,6 +220,19 @@ export default function ProfilePage() {
           </WidgetCard>
 
           <WidgetCard variant="cyan" delay={180} hover={false}>
+            <div className="flex items-center gap-3 mb-4">
+              <span className="icon-badge bg-cyan-500/20 border border-cyan-400/30 text-cyan-200">
+                <Palette size={18} />
+              </span>
+              <div>
+                <h3 className="text-base font-extrabold text-white">Appearance</h3>
+                <p className="text-xs text-white/45 mt-0.5">Switch between light and dark mode</p>
+              </div>
+            </div>
+            <ThemeToggle />
+          </WidgetCard>
+
+          <WidgetCard variant="cyan" delay={200} hover={false}>
             <div className="flex items-center gap-3 mb-4">
               <span className="icon-badge bg-cyan-500/20 border border-cyan-400/30 text-cyan-200">
                 <Shield size={18} />

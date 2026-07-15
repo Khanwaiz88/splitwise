@@ -207,7 +207,7 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
         </button>
 
         {showDropdown && (
-          <div className="mt-2 glass border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto animate-fade-in">
+          <div className="mt-2 nav-bar-solid border rounded-xl shadow-2xl overflow-hidden max-h-52 overflow-y-auto animate-fade-in">
             {groups.length === 0 ? (
               <p className="px-3.5 py-3 text-xs text-white/40">No groups yet</p>
             ) : (
