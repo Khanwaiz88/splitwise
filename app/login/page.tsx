@@ -47,14 +47,14 @@ function LoginForm() {
         const result = await acceptGroupInvite(inviteToken);
         localStorage.setItem('splitwise_active_group', result.groupId);
         toast.success(`Joined "${result.groupName}"!`);
-        router.push('/dashboard');
+        window.location.assign('/dashboard');
         return;
       } catch {
-        router.push(`/join/${inviteToken}`);
+        window.location.assign(`/join/${inviteToken}`);
         return;
       }
     }
-    router.push(destination);
+    window.location.assign(destination);
   };
 
   const handleToggle = () => {

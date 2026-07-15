@@ -49,17 +49,13 @@ export async function updateSession(request: NextRequest) {
       }
     )
 
-    // getUser refreshes the session cookie — required for SSR auth on refresh
+    // Refresh session cookies when present — do NOT redirect dashboard routes here.
+    // Client-side shell validates auth; server redirect caused refresh → login loops
+    // when the browser session lived in client storage before cookie sync.
     const { data: { user } } = await supabase.auth.getUser()
 
     const url = request.nextUrl.clone()
     const pathname = url.pathname
-
-    if (!user && pathname.startsWith('/dashboard')) {
-      url.pathname = '/login'
-      url.searchParams.set('next', `${pathname}${url.search}`)
-      return NextResponse.redirect(url)
-    }
 
     if (user && (pathname === '/login' || pathname === '/')) {
       const destination = safeRedirectPath(url.searchParams.get('next'))

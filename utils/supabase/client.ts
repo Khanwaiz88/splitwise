@@ -17,34 +17,6 @@ export function createClient() {
   client = createBrowserClient(
     supabaseUrl || 'https://missing-supabase-url.supabase.co',
     supabaseAnonKey || 'missing-anon-key',
-    {
-      cookies: {
-        getAll() {
-          if (typeof document === 'undefined') return []
-          return document.cookie
-            .split('; ')
-            .filter(Boolean)
-            .map((entry) => {
-              const eq = entry.indexOf('=')
-              const name = eq >= 0 ? entry.slice(0, eq) : entry
-              const value = eq >= 0 ? entry.slice(eq + 1) : ''
-              return { name, value: decodeURIComponent(value) }
-            })
-        },
-        setAll(cookiesToSet) {
-          if (typeof document === 'undefined') return
-          cookiesToSet.forEach(({ name, value, options }) => {
-            const parts = [`${name}=${encodeURIComponent(value)}`]
-            if (options?.maxAge != null) parts.push(`Max-Age=${options.maxAge}`)
-            if (options?.path) parts.push(`Path=${options.path}`)
-            if (options?.domain) parts.push(`Domain=${options.domain}`)
-            if (options?.sameSite) parts.push(`SameSite=${options.sameSite}`)
-            if (options?.secure) parts.push('Secure')
-            document.cookie = parts.join('; ')
-          })
-        },
-      },
-    }
   )
   return client
 }

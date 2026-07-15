@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/client';
 import { loadProfileCache, resolveOfflineProfile } from '@/utils/profileCache';
 import MeshBackground from '@/components/ui/MeshBackground';
@@ -33,6 +34,18 @@ function readCachedShellUser(): ShellUser | null {
   }
 }
 
+function toShellUser(authUser: User): ShellUser {
+  const profile = loadProfileCache();
+  return {
+    id: authUser.id,
+    displayName:
+      profile?.display_name?.trim() ||
+      authUser.email?.split('@')[0] ||
+      'User',
+    email: profile?.email ?? authUser.email ?? '',
+  };
+}
+
 export default function DashboardShell({
   children,
 }: {
@@ -46,24 +59,32 @@ export default function DashboardShell({
 
   useEffect(() => {
     let cancelled = false;
+    const supabase = createClient();
+
+    const applyUser = (authUser: User) => {
+      if (cancelled) return;
+      setUser(toShellUser(authUser));
+      setReady(true);
+    };
+
+    const redirectToLogin = () => {
+      if (cancelled) return;
+      const qs = searchParams.toString();
+      const next = encodeURIComponent(`${pathname}${qs ? `?${qs}` : ''}`);
+      router.replace(`/login?next=${next}`);
+    };
 
     async function init() {
-      const supabase = createClient();
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      // getSession reads local auth storage first (fast, survives refresh)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        applyUser(session.user);
+        return;
+      }
 
+      const { data: { user: authUser } } = await supabase.auth.getUser();
       if (authUser) {
-        const profile = loadProfileCache();
-        if (!cancelled) {
-          setUser({
-            id: authUser.id,
-            displayName:
-              profile?.display_name?.trim() ||
-              authUser.email?.split('@')[0] ||
-              'User',
-            email: profile?.email ?? authUser.email ?? '',
-          });
-          setReady(true);
-        }
+        applyUser(authUser);
         return;
       }
 
@@ -84,14 +105,20 @@ export default function DashboardShell({
         return;
       }
 
-      const qs = searchParams.toString();
-      const next = encodeURIComponent(`${pathname}${qs ? `?${qs}` : ''}`);
-      router.replace(`/login?next=${next}`);
+      redirectToLogin();
     }
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        if (session?.user) applyUser(session.user);
+      },
+    );
+
     init();
+
     return () => {
       cancelled = true;
+      subscription.unsubscribe();
     };
   }, [router, pathname, searchParams]);
 
