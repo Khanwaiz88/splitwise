@@ -47,6 +47,7 @@ function LoginForm() {
         const result = await acceptGroupInvite(inviteToken);
         localStorage.setItem('splitwise_active_group', result.groupId);
         toast.success(`Joined "${result.groupName}"!`);
+        window.dispatchEvent(new CustomEvent('invitesChanged'));
         window.location.assign('/dashboard');
         return;
       } catch {
@@ -54,6 +55,19 @@ function LoginForm() {
         return;
       }
     }
+
+    // Sync any pending email invites after login
+    try {
+      const res = await fetch('/api/invites', { credentials: 'include', cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.count > 0) {
+          window.location.assign('/dashboard/invites');
+          return;
+        }
+      }
+    } catch { /* ignore */ }
+
     window.location.assign(destination);
   };
 

@@ -2,14 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, PlusCircle, Activity, Users, Sparkles, User } from 'lucide-react';
+import { Home, PlusCircle, Activity, Users, Sparkles, User, Inbox } from 'lucide-react';
 import GroupSwitcher from '@/components/GroupSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
+import PendingInvitesBadge from '@/components/PendingInvitesBadge';
 import { avatarGradient } from '@/utils/avatarColor';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', icon: Home, match: (p: string, q: string) => p === '/dashboard' && q !== 'add' },
   { href: '/dashboard/groups', label: 'Groups', icon: Users, match: (p: string) => p === '/dashboard/groups' },
+  { href: '/dashboard/invites', label: 'Invites', icon: Inbox, match: (p: string) => p === '/dashboard/invites' },
   { href: '/dashboard/activity', label: 'Activity', icon: Activity, match: (p: string) => p === '/dashboard/activity' },
   { href: '/dashboard/profile', label: 'Profile', icon: User, match: (p: string) => p === '/dashboard/profile' },
 ];
@@ -65,6 +67,7 @@ export default function DashboardNav({
             <GroupSwitcher userId={userId} />
           </div>
           <ThemeToggle compact />
+          <PendingInvitesBadge compact />
         </div>
       </div>
 
@@ -85,9 +88,10 @@ export default function DashboardNav({
         </div>
 
         <nav className="flex-1 flex flex-col gap-1.5 animate-fade-in-up delay-2 min-h-0">
-          {NAV_ITEMS.map(({ href, label, icon, match }) => (
+          {NAV_ITEMS.filter((item) => item.href !== '/dashboard/invites').map(({ href, label, icon, match }) => (
             <NavLink key={href} href={href} label={label} icon={icon} active={match(pathname, action ?? '')} />
           ))}
+          <PendingInvitesBadge />
           <Link
             href="/dashboard?action=add"
             className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold mt-2 transition-all duration-200 ${
@@ -124,7 +128,7 @@ export default function DashboardNav({
       {/* Mobile Bottom Nav */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 nav-bar-solid border-t pb-safe">
         <div className="flex items-end justify-around px-2 pt-2.5 pb-2">
-          {NAV_ITEMS.filter((item) => item.href !== '/dashboard/profile').map(({ href, label, icon: Icon, match }) => {
+          {NAV_ITEMS.filter((item) => item.href !== '/dashboard/profile' && item.href !== '/dashboard/invites').map(({ href, label, icon: Icon, match }) => {
             const active = match(pathname, action ?? '');
             return (
               <Link

@@ -113,16 +113,25 @@ export default function InviteMember({
     }
   };
 
-  const createInviteLink = async () => {
+  const createInvite = async () => {
     const email = trimmed.toLowerCase();
     if (!emailValid) { toast.error('Enter a valid email address.'); return; }
     setIsInviting(true);
+    resetInvite();
     try {
       const result = await sendGroupInvite(groupId, email);
       setInviteLinkUrl(result.joinUrl);
-      toast.success('Invite link ready — copy and share!');
+      if (result.emailSent) {
+        toast.success(result.hasAccount
+          ? 'Invite sent! They will see it in the app and by email.'
+          : 'Invite sent by email! Share the link too if needed.');
+      } else if (result.emailSkipped) {
+        toast.success('Invite saved — copy the link below (configure SMTP for email).');
+      } else {
+        toast.success('Invite created — copy the link below.');
+      }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create invite');
+      toast.error(err instanceof Error ? err.message : 'Failed to send invite');
     } finally {
       setIsInviting(false);
     }
@@ -176,17 +185,17 @@ export default function InviteMember({
             >
               {isAdding ? <Loader2 size={20} className="animate-spin" /> : <UserCheck size={20} />}
               <span className="text-xs font-extrabold">Add to Group</span>
-              <span className="text-[10px] text-lime-300/60 text-center leading-tight">Has account</span>
+              <span className="text-[10px] text-lime-300/60 text-center leading-tight">Skip invite</span>
             </button>
             <button
               type="button"
-              onClick={createInviteLink}
+              onClick={createInvite}
               disabled={busy}
               className="flex flex-col items-center gap-1.5 py-4 px-2 rounded-xl bg-gradient-to-br from-cyan-500/15 to-sky-500/10 border border-cyan-500/30 text-cyan-300 hover:border-cyan-400/50 disabled:opacity-50 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               {isInviting ? <Loader2 size={20} className="animate-spin" /> : <Link2 size={20} />}
-              <span className="text-xs font-extrabold">Invite Link</span>
-              <span className="text-[10px] text-cyan-300/60 text-center leading-tight">No account</span>
+              <span className="text-xs font-extrabold">Send Invite</span>
+              <span className="text-[10px] text-cyan-300/60 text-center leading-tight">Email + app</span>
             </button>
           </div>
         )}
@@ -253,7 +262,7 @@ export default function InviteMember({
 
         {!isSearching && emailValid && results.length === 0 && (
           <p className="text-xs text-white/40 px-1">
-            No user found — use <strong className="text-cyan-300">Invite Link</strong> or add by name if they don&apos;t use email.
+            No user found — use <strong className="text-cyan-300">Send Invite</strong> for email + app notification.
           </p>
         )}
 
@@ -266,7 +275,7 @@ export default function InviteMember({
                 <Copy size={12} /> Copy
               </button>
             </div>
-            <p className="text-[10px] text-white/30">Valid 7 days · Same email required to join</p>
+            <p className="text-[10px] text-white/30">Valid 7 days · Also sent by email when SMTP is configured</p>
           </div>
         )}
       </div>
