@@ -31,7 +31,7 @@ export default function ThemeToggle({ compact = false }: { compact?: boolean }) 
   }
 
   return (
-    <div className="flex gap-2 p-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]">
+    <div className="flex w-full gap-2 p-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]">
       <button
         type="button"
         onClick={() => switchTheme('light')}

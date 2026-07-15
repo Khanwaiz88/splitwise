@@ -26,8 +26,8 @@ function escapeHtml(str: string): string {
 
 function buildInviteHtml(params: InviteEmailParams): string {
   const cta = params.hasAccount
-    ? 'Open Splitwise to accept the invite in your app, or use the button below.'
-    : 'Create your account and join the group using the button below.';
+    ? 'Open Splitwise and go to Invites to Accept or Decline.'
+    : 'Create your account with the email below, then Accept or Decline the invite in the app.';
 
   return `<!DOCTYPE html>
 <html>
@@ -46,7 +46,7 @@ function buildInviteHtml(params: InviteEmailParams): string {
           </p>
           <a href="${params.joinUrl}"
             style="display:inline-block;background:linear-gradient(135deg,#8b5cf6,#d946ef);color:#fff;font-weight:700;font-size:15px;padding:14px 28px;border-radius:10px;text-decoration:none;">
-            ${params.hasAccount ? 'View Invite' : 'Accept Invite & Join'}
+            ${params.hasAccount ? 'Open Invites' : 'Create Account & View Invite'}
           </a>
           <p style="color:#64748b;font-size:12px;margin:28px 0 0;line-height:1.5;">
             Expires in 7 days. Use <strong style="color:#94a3b8;">${escapeHtml(params.to)}</strong> to sign in.

@@ -8,8 +8,11 @@ type InputFieldProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  readOnly?: boolean;
   required?: boolean;
   autoFocus?: boolean;
+  autoComplete?: string;
+  name?: string;
 };
 
 export default function InputField({
@@ -20,8 +23,11 @@ export default function InputField({
   onChange,
   placeholder,
   disabled,
+  readOnly,
   required,
   autoFocus,
+  autoComplete,
+  name,
 }: InputFieldProps) {
   return (
     <div className="space-y-2">
@@ -34,12 +40,15 @@ export default function InputField({
         </span>
         <input
           type={type}
+          name={name}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
+          readOnly={readOnly}
           required={required}
           autoFocus={autoFocus}
+          autoComplete={autoComplete}
           className="input-group-field"
         />
       </div>

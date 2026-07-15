@@ -104,6 +104,13 @@ export default function InvitesPage() {
           <p className="text-white/45 text-sm mt-2 max-w-xs mx-auto">
             When someone invites you to a group, it will appear here and in your email.
           </p>
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard')}
+            className="mt-6 text-sm font-bold text-violet-300 hover:text-violet-200"
+          >
+            Go to Dashboard →
+          </button>
         </WidgetCard>
       ) : (
         <div className="card-list">

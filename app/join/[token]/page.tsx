@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
-import { acceptGroupInvite } from '@/utils/invitesApi';
 import MeshBackground from '@/components/ui/MeshBackground';
-import { Users, Loader2, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
+import { Users, Loader2, AlertCircle, Sparkles, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type Preview = {
@@ -23,9 +22,9 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
   const [token, setToken] = useState('');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
-  const [done, setDone] = useState(false);
   const [error, setError] = useState('');
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => { params.then(({ token: t }) => setToken(t)); }, [params]);
 
@@ -39,22 +38,28 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
   }, [token]);
 
   useEffect(() => {
-    if (!token || !preview || preview.expired || preview.status === 'accepted') return;
-    supabase.auth.getUser().then(({ data }: { data: { user: { id: string; email?: string | null } | null } }) => {
-      const user = data.user;
-      if (!user || user.email?.toLowerCase() !== preview.email.toLowerCase()) return;
-      setJoining(true);
-      acceptGroupInvite(token)
-        .then((result) => {
-          setDone(true);
-          localStorage.setItem('splitwise_active_group', result.groupId);
-          toast.success(`Joined "${result.groupName}"!`);
-          setTimeout(() => router.push('/dashboard'), 1500);
-        })
-        .catch((err) => setError(err.message))
-        .finally(() => setJoining(false));
-    });
-  }, [token, preview, supabase, router]);
+    void (async () => {
+      const { data } = await supabase.auth.getUser();
+      setSessionEmail(data.user?.email?.toLowerCase() ?? null);
+    })();
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!preview || preview.expired || preview.status !== 'pending') return;
+    if (!sessionEmail) return;
+    if (sessionEmail === preview.email.toLowerCase()) {
+      toast.success('You have a group invite — Accept or Decline.');
+      router.replace('/dashboard/invites');
+    }
+  }, [preview, sessionEmail, router]);
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    await supabase.auth.signOut();
+    setSessionEmail(null);
+    setSigningOut(false);
+    toast.success('Signed out. Now sign up with the invite email.');
+  };
 
   if (loading) {
     return (
@@ -79,20 +84,8 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
     );
   }
 
-  if (done) {
-    return (
-      <div className="auth-shell relative">
-        <MeshBackground />
-        <div className="max-w-md w-full widget widget-lime widget-lg text-center relative z-10 animate-bounce-in">
-          <CheckCircle2 className="text-lime-300 mx-auto mb-4" size={52} />
-          <h1 className="text-xl font-extrabold text-white mb-2">You&apos;re in!</h1>
-          <p className="text-white/50 text-sm">Redirecting to dashboard…</p>
-        </div>
-      </div>
-    );
-  }
-
-  const expired = preview?.expired || preview?.status === 'accepted';
+  const expired = preview?.expired || preview?.status === 'accepted' || preview?.status === 'declined';
+  const wrongAccount = sessionEmail && preview && sessionEmail !== preview.email.toLowerCase();
 
   return (
     <div className="auth-shell relative">
@@ -113,21 +106,40 @@ export default function JoinPage({ params }: { params: Promise<{ token: string }
           <div className="widget widget-amber p-4 text-amber-200 text-sm text-center font-semibold">
             This invite has expired or was already used.
           </div>
-        ) : joining ? (
-          <div className="flex items-center justify-center gap-2 text-white/50 py-4">
-            <Loader2 size={18} className="animate-spin text-violet-400" /> Joining group…
+        ) : wrongAccount ? (
+          <div className="card-list">
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+              You&apos;re signed in as <strong>{sessionEmail}</strong>, but this invite is for{' '}
+              <strong>{preview?.email}</strong>. Sign out first, then create an account with the invite email.
+            </div>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="w-full py-3.5 flex items-center justify-center gap-2 glass-light border border-white/10 rounded-xl font-bold text-white"
+            >
+              {signingOut ? <Loader2 size={18} className="animate-spin" /> : <LogOut size={18} />}
+              Sign Out
+            </button>
           </div>
         ) : (
           <div className="card-list">
             <p className="text-sm text-white/50 text-center font-medium">
-              Sign up or log in with <span className="text-white font-bold">{preview?.email}</span>
+              Invite for <span className="text-white font-bold">{preview?.email}</span>
             </p>
-            <Link href={`/login?invite=${token}&email=${encodeURIComponent(preview?.email ?? '')}&mode=signup`}
-              className="block w-full py-3.5 btn-gradient rounded-xl font-extrabold text-center">
-              Create Account & Join
+            <p className="text-xs text-white/40 text-center">
+              After sign up you&apos;ll see Accept / Decline — you won&apos;t be added until you accept.
+            </p>
+            <Link
+              href={`/login?invite=${token}&email=${encodeURIComponent(preview?.email ?? '')}&mode=signup`}
+              className="block w-full py-3.5 btn-gradient rounded-xl font-extrabold text-center"
+            >
+              Create Account
             </Link>
-            <Link href={`/login?invite=${token}&email=${encodeURIComponent(preview?.email ?? '')}`}
-              className="block w-full py-3.5 glass-light border border-white/10 hover:border-violet-500/40 text-white font-bold rounded-xl text-center transition-all">
+            <Link
+              href={`/login?invite=${token}&email=${encodeURIComponent(preview?.email ?? '')}`}
+              className="block w-full py-3.5 glass-light border border-white/10 hover:border-violet-500/40 text-white font-bold rounded-xl text-center transition-all"
+            >
               I Already Have an Account
             </Link>
           </div>

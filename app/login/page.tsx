@@ -1,9 +1,8 @@
 'use client';
 
 import { Suspense, useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
-import { acceptGroupInvite } from '@/utils/invitesApi';
 import MeshBackground from '@/components/ui/MeshBackground';
 import InputField from '@/components/ui/InputField';
 import { Mail, Lock, Sparkles, AlertCircle, Users } from 'lucide-react';
@@ -15,63 +14,65 @@ import {
 } from '@/utils/authValidation';
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
 
   const inviteToken = searchParams.get('invite');
-  const prefilledEmail = searchParams.get('email') ?? '';
+  const urlEmail = searchParams.get('email') ?? '';
   const startSignup = searchParams.get('mode') === 'signup';
 
   const [isLogin, setIsLogin] = useState(!startSignup);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState(prefilledEmail);
+  const [inviteEmail, setInviteEmail] = useState(urlEmail);
+  const [inviteGroupName, setInviteGroupName] = useState('');
+  const [email, setEmail] = useState(urlEmail);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [validationError, setValidationError] = useState('');
 
   useEffect(() => {
-    if (prefilledEmail) setEmail(prefilledEmail);
+    if (!inviteToken) return;
+    fetch(`/api/invites/accept?token=${encodeURIComponent(inviteToken)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.email) {
+          setInviteEmail(data.email);
+          setEmail(data.email);
+        }
+        if (data.groupName) setInviteGroupName(data.groupName);
+      })
+      .catch(() => { /* URL email used as fallback */ });
+  }, [inviteToken]);
+
+  useEffect(() => {
+    if (inviteEmail) setEmail(inviteEmail);
     if (startSignup) setIsLogin(false);
-  }, [prefilledEmail, startSignup]);
+  }, [inviteEmail, startSignup]);
 
   const afterAuth = async () => {
     const nextPath = searchParams.get('next');
-    const destination =
+    const defaultDest =
       nextPath && nextPath.startsWith('/dashboard') && !nextPath.startsWith('//')
         ? nextPath
         : '/dashboard';
 
-    if (inviteToken) {
-      try {
-        const result = await acceptGroupInvite(inviteToken);
-        localStorage.setItem('splitwise_active_group', result.groupId);
-        toast.success(`Joined "${result.groupName}"!`);
-        window.dispatchEvent(new CustomEvent('invitesChanged'));
-        window.location.assign('/dashboard');
-        return;
-      } catch {
-        window.location.assign(`/join/${inviteToken}`);
-        return;
-      }
-    }
-
-    // Sync any pending email invites after login
     try {
       const res = await fetch('/api/invites', { credentials: 'include', cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        if (data.count > 0) {
+        if (data.count > 0 || inviteToken) {
+          toast.success('Check your group invites — Accept or Decline.');
           window.location.assign('/dashboard/invites');
           return;
         }
       }
     } catch { /* ignore */ }
 
-    window.location.assign(destination);
+    window.location.assign(defaultDest);
   };
 
   const handleToggle = () => {
+    if (inviteToken) return;
     setIsLogin(!isLogin);
     setPassword('');
     setConfirmPassword('');
@@ -79,19 +80,20 @@ function LoginForm() {
   };
 
   const validate = () => {
+    const emailErr = validateLoginEmail(email);
+    if (emailErr) return emailErr;
+
+    if (inviteToken && inviteEmail && email.trim().toLowerCase() !== inviteEmail.trim().toLowerCase()) {
+      return `This invite was sent to ${inviteEmail}. Use that email or ask for a new invite.`;
+    }
+
     if (isLogin) {
-      const emailErr = validateLoginEmail(email);
-      if (emailErr) return emailErr;
       if (!password) return 'Password is required.';
       return '';
     }
 
-    const emailErr = validateLoginEmail(email);
-    if (emailErr) return emailErr;
-
     const passwordErr = validateSignupPassword(password);
     if (passwordErr) return passwordErr;
-
     if (password !== confirmPassword) return 'Passwords do not match.';
     return '';
   };
@@ -111,9 +113,11 @@ function LoginForm() {
       } else {
         const { data, error } = await supabase.auth.signUp({ email, password });
         if (error) toast.error(error.message);
-        else if (data?.session) { toast.success('Account created!'); await afterAuth(); }
-        else {
-          toast.success('Check your email to verify.', { duration: 6000 });
+        else if (data?.session) {
+          toast.success('Account created!');
+          await afterAuth();
+        } else {
+          toast.success('Check your email to verify, then sign in to see your invites.', { duration: 6000 });
           setIsLogin(true);
           setPassword('');
           setConfirmPassword('');
@@ -126,6 +130,8 @@ function LoginForm() {
     }
   };
 
+  const lockedEmail = !!inviteToken && !!inviteEmail;
+
   return (
     <div className="w-full max-w-[420px] widget widget-violet widget-lg shadow-2xl shadow-violet-500/20 relative z-10 animate-scale-in">
       <div className="text-center mb-8 px-1">
@@ -133,13 +139,27 @@ function LoginForm() {
           {inviteToken ? <Users className="w-7 h-7 text-white" /> : <Sparkles className="w-7 h-7 text-white" />}
         </div>
         <h1 className="text-3xl font-extrabold text-white tracking-tight">
-          {inviteToken ? 'Join Group' : isLogin ? 'Welcome Back' : 'Get Started'}
+          {inviteToken ? 'Group Invite' : isLogin ? 'Welcome Back' : 'Get Started'}
         </h1>
         <p className="text-white/50 text-sm mt-2 font-medium">
-          {inviteToken ? 'Sign in or create an account to join'
+          {inviteToken
+            ? inviteGroupName
+              ? `You've been invited to "${inviteGroupName}". Sign up or log in, then Accept or Decline.`
+              : 'Sign up or log in — then Accept or Decline the invite in the app.'
             : isLogin ? 'Sign in to your dashboard' : 'Create your free account'}
         </p>
       </div>
+
+      {inviteToken && inviteEmail && (
+        <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100 mb-6">
+          Invite sent to <strong className="text-white">{inviteEmail}</strong>
+          {lockedEmail && (
+            <span className="block text-xs text-cyan-200/70 mt-1">
+              Create an account with this email (not someone else&apos;s).
+            </span>
+          )}
+        </div>
+      )}
 
       {!inviteToken && (
         <div className="flex p-1.5 rounded-xl glass-light border border-white/10 mb-7 gap-1">
@@ -154,6 +174,19 @@ function LoginForm() {
         </div>
       )}
 
+      {inviteToken && (
+        <div className="flex p-1.5 rounded-xl glass-light border border-white/10 mb-7 gap-1">
+          <button type="button" onClick={() => !loading && setIsLogin(false)} disabled={loading}
+            className={`flex-1 py-3 text-sm font-extrabold rounded-lg transition-all ${!isLogin ? 'btn-gradient shadow-md' : 'text-white/45 hover:text-white/70'}`}>
+            Sign Up
+          </button>
+          <button type="button" onClick={() => !loading && setIsLogin(true)} disabled={loading}
+            className={`flex-1 py-3 text-sm font-extrabold rounded-lg transition-all ${isLogin ? 'btn-gradient shadow-md' : 'text-white/45 hover:text-white/70'}`}>
+            Log In
+          </button>
+        </div>
+      )}
+
       {validationError && (
         <div className="flex items-start gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-rose-200 text-sm mb-6">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -161,15 +194,18 @@ function LoginForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5" autoComplete="off">
         <InputField
           icon={Mail}
-          label="Email"
+          label={lockedEmail ? 'Invite email (required)' : 'Email'}
           type="email"
+          name={lockedEmail ? 'invite-email' : 'email'}
           value={email}
-          onChange={setEmail}
+          onChange={lockedEmail ? () => {} : setEmail}
           placeholder="you@example.com"
-          disabled={loading || !!prefilledEmail}
+          disabled={loading}
+          readOnly={lockedEmail}
+          autoComplete={lockedEmail ? 'off' : 'email'}
           required
         />
         <InputField
@@ -198,7 +234,7 @@ function LoginForm() {
           />
         )}
         <button type="submit" disabled={loading} className="w-full btn-gradient py-3.5 mt-2 rounded-xl font-extrabold text-sm disabled:opacity-50">
-          {loading ? 'Processing…' : inviteToken ? (isLogin ? 'Sign In & Join' : 'Create Account & Join') : (isLogin ? 'Sign In' : 'Create Account')}
+          {loading ? 'Processing…' : inviteToken ? (isLogin ? 'Sign In' : 'Create Account') : (isLogin ? 'Sign In' : 'Create Account')}
         </button>
       </form>
     </div>

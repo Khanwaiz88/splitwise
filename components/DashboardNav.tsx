@@ -74,8 +74,8 @@ export default function DashboardNav({
       </div>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 shrink-0 nav-bar-solid border-r h-screen sticky top-0 p-6 gap-5 overflow-y-auto z-40">
-        <div className="mb-2 px-1 animate-fade-in-up">
+      <aside className="hidden md:flex flex-col w-64 shrink-0 nav-bar-solid border-r h-dvh max-h-dvh sticky top-0 z-40 overflow-hidden">
+        <div className="shrink-0 p-6 pb-0 animate-fade-in-up">
           <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity group">
             <span className="icon-badge bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/40 group-hover:scale-105 transition-transform">
               <Sparkles size={18} className="text-white" />
@@ -84,19 +84,22 @@ export default function DashboardNav({
           </Link>
         </div>
 
-        <div className="animate-fade-in-up delay-1 shrink-0 space-y-3">
-          <p className="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest px-1">Active Group</p>
+        <div className="shrink-0 px-6 pt-5 animate-fade-in-up delay-1">
+          <p className="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest px-1 mb-3">Active Group</p>
           <GroupSwitcher userId={userId} />
         </div>
 
-        <nav className="flex-1 flex flex-col gap-1.5 animate-fade-in-up delay-2 min-h-0">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-4 flex flex-col gap-1.5 animate-fade-in-up delay-2">
           {NAV_ITEMS.filter((item) => item.href !== '/dashboard/invites').map(({ href, label, icon, match }) => (
             <NavLink key={href} href={href} label={label} icon={icon} active={match(pathname, action ?? '')} />
           ))}
           <PendingInvitesBadge />
+        </nav>
+
+        <div className="shrink-0 px-6 pb-6 pt-4 border-t border-[var(--border-subtle)] animate-fade-in-up delay-3 space-y-3 bg-[var(--nav-bg)]">
           <Link
             href="/dashboard?action=add"
-            className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold mt-2 transition-all duration-200 ${
+            className={`flex items-center justify-center gap-3 px-3.5 py-3 rounded-xl text-sm font-bold transition-all duration-200 w-full ${
               isAddActive
                 ? 'btn-gradient'
                 : 'bg-gradient-to-r from-violet-500/15 to-fuchsia-500/15 text-violet-200 border border-violet-500/25 hover:border-violet-400/40 hover:shadow-lg hover:shadow-violet-500/15'
@@ -104,9 +107,6 @@ export default function DashboardNav({
           >
             <PlusCircle size={18} /> Add Expense
           </Link>
-        </nav>
-
-        <div className="animate-fade-in-up delay-3 space-y-3 pt-4 border-t border-[var(--border-subtle)]">
           <ThemeToggle />
           <Link
             href="/dashboard/profile"
