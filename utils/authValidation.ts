@@ -8,34 +8,24 @@ export function validateLoginEmail(email: string): string | null {
   return null;
 }
 
-/** Stricter email rules for new sign-ups only. */
+/** Sign-up email: capital letter first, local part letters only (A–Z, a–z). */
 export function validateSignupEmail(email: string): string | null {
   const basic = validateLoginEmail(email);
   if (basic) return basic;
 
   const localPart = email.trim().split('@')[0] ?? '';
 
-  if (!/^[A-Z]/.test(localPart)) {
-    return 'Email must start with a capital letter (e.g. John.doe@example.com).';
-  }
-
-  if (!/[a-zA-Z]/.test(localPart.slice(1))) {
-    return 'Email must include letters after the first capital letter.';
-  }
-
-  if (!/[^a-zA-Z0-9]/.test(localPart)) {
-    return 'Email must include at least one special character before @ (e.g. . _ - +).';
+  if (!/^[A-Z][a-zA-Z]*$/.test(localPart)) {
+    return 'Email must start with a capital letter and use only letters before @ (e.g. John@gmail.com).';
   }
 
   return null;
 }
 
-/** Professional password rules for new sign-ups. */
+/** Sign-up password: min 8 characters + at least one special character. */
 export function validateSignupPassword(password: string): string | null {
   if (!password) return 'Password is required.';
   if (password.length < 8) return 'Password must be at least 8 characters.';
-  if (!/[A-Z]/.test(password)) return 'Password must include at least one uppercase letter.';
-  if (!/[a-z]/.test(password)) return 'Password must include at least one lowercase letter.';
   if (!/[^A-Za-z0-9]/.test(password)) {
     return 'Password must include at least one special character (e.g. ! @ # $).';
   }
@@ -43,7 +33,7 @@ export function validateSignupPassword(password: string): string | null {
 }
 
 export const SIGNUP_PASSWORD_HINT =
-  'Min 8 characters, 1 uppercase, 1 lowercase, 1 special character.';
+  'Min 8 characters and at least 1 special character (e.g. ! @ #).';
 
 export const SIGNUP_EMAIL_HINT =
-  'Start with a capital letter and include a special character (e.g. John.doe@mail.com).';
+  'Start with a capital letter; only letters before @ (e.g. John@gmail.com).';
