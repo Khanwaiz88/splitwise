@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, PlusCircle, Activity, Users, Sparkles, User, Inbox } from 'lucide-react';
+import { Home, PlusCircle, Activity, Users, Sparkles, User, Inbox, MessageSquare } from 'lucide-react';
 import GroupSwitcher from '@/components/GroupSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import PendingInvitesBadge from '@/components/PendingInvitesBadge';
@@ -12,6 +12,7 @@ import { avatarGradient } from '@/utils/avatarColor';
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Home', icon: Home, match: (p: string, q: string) => p === '/dashboard' && q !== 'add' },
   { href: '/dashboard/groups', label: 'Groups', icon: Users, match: (p: string) => p === '/dashboard/groups' },
+  { href: '/dashboard/chat', label: 'Chat', icon: MessageSquare, match: (p: string) => p === '/dashboard/chat' },
   { href: '/dashboard/invites', label: 'Invites', icon: Inbox, match: (p: string) => p === '/dashboard/invites' },
   { href: '/dashboard/activity', label: 'Activity', icon: Activity, match: (p: string) => p === '/dashboard/activity' },
   { href: '/dashboard/profile', label: 'Profile', icon: User, match: (p: string) => p === '/dashboard/profile' },
@@ -133,7 +134,8 @@ export default function DashboardNav({
           {NAV_ITEMS.filter((item) =>
             item.href !== '/dashboard/profile' &&
             item.href !== '/dashboard/activity' &&
-            item.href !== '/dashboard/invites',
+            item.href !== '/dashboard/invites' &&
+            item.href !== '/dashboard/chat',
           ).map(({ href, label, icon: Icon, match }) => {
             const active = match(pathname, action ?? '');
             return (
@@ -149,6 +151,16 @@ export default function DashboardNav({
               </Link>
             );
           })}
+
+          <Link
+            href="/dashboard/chat"
+            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[52px] ${
+              pathname === '/dashboard/chat' ? 'text-violet-300' : 'text-white/40'
+            }`}
+          >
+            <MessageSquare size={21} strokeWidth={pathname === '/dashboard/chat' ? 2.5 : 2} />
+            <span className="text-[10px] font-semibold">Chat</span>
+          </Link>
 
           <Link
             href="/dashboard/invites"
