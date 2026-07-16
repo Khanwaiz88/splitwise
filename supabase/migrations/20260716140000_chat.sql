@@ -227,14 +227,17 @@ GRANT EXECUTE ON FUNCTION public.get_dm_contacts() TO authenticated;
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "conversations_select_participant" ON public.conversations;
 CREATE POLICY "conversations_select_participant"
   ON public.conversations FOR SELECT TO authenticated
   USING (public.is_conversation_participant(id));
 
+DROP POLICY IF EXISTS "messages_select_participant" ON public.messages;
 CREATE POLICY "messages_select_participant"
   ON public.messages FOR SELECT TO authenticated
   USING (public.is_conversation_participant(conversation_id));
 
+DROP POLICY IF EXISTS "messages_insert_participant" ON public.messages;
 CREATE POLICY "messages_insert_participant"
   ON public.messages FOR INSERT TO authenticated
   WITH CHECK (

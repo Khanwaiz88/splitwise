@@ -123,9 +123,9 @@ function directUrl(ref) {
   return `postgresql://postgres:${encodedPassword}@db.${ref}.supabase.co:5432/postgres`;
 }
 
-/** Supavisor session mode — IPv4 compatible (use for migrations on most home networks) */
-function poolerUrl(ref, region) {
-  return `postgresql://postgres.${ref}:${encodedPassword}@aws-0-${region}.pooler.supabase.com:5432/postgres`;
+/** Supavisor session mode — IPv4 compatible */
+function poolerUrl(ref, region, prefix = 'aws-0') {
+  return `postgresql://postgres.${ref}:${encodedPassword}@${prefix}-${region}.pooler.supabase.com:5432/postgres`;
 }
 
 const candidates = [];
@@ -135,11 +135,16 @@ if (customDbUrl) {
 }
 
 if (projectRef && dbPassword) {
+  const prefixes = ['aws-1', 'aws-0'];
   if (dbRegion) {
-    candidates.push({ label: `Pooler (${dbRegion})`, url: poolerUrl(projectRef, dbRegion) });
+    for (const prefix of prefixes) {
+      candidates.push({ label: `Pooler (${prefix}-${dbRegion})`, url: poolerUrl(projectRef, dbRegion, prefix) });
+    }
   } else {
-    for (const region of POOLER_REGIONS) {
-      candidates.push({ label: `Pooler (${region})`, url: poolerUrl(projectRef, region) });
+    for (const prefix of prefixes) {
+      for (const region of POOLER_REGIONS) {
+        candidates.push({ label: `Pooler (${prefix}-${region})`, url: poolerUrl(projectRef, region, prefix) });
+      }
     }
   }
   candidates.push({ label: 'Direct (db.*.supabase.co — IPv6)', url: directUrl(projectRef) });

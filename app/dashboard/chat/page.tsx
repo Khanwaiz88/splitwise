@@ -162,9 +162,10 @@ export default function ChatPage() {
         <div>
           <p className="text-amber-100 font-bold text-sm">Chat database not ready</p>
           <p className="text-amber-200/70 text-xs mt-2 leading-relaxed">
-            Supabase par chat migration apply karni hogi. Dashboard → SQL Editor mein{' '}
-            <code className="text-amber-100">20260716140000_chat.sql</code> run karein,
-            ya <code className="text-amber-100">npm run db:push</code> chalayein.
+            The chat tables have not been created yet. Run migration{' '}
+            <code className="text-amber-100">20260716140000_chat.sql</code> in the
+            Supabase Dashboard → SQL Editor, or run{' '}
+            <code className="text-amber-100">npm run db:push</code> locally.
           </p>
         </div>
       </div>
@@ -251,7 +252,7 @@ export default function ChatPage() {
                 </p>
                 {!selectedGroupId && (
                   <p className="text-white/45 text-sm mt-2 max-w-xs mx-auto">
-                    Left side se koi bhi group choose karein — saari groups yahan dikhen gi.
+                    Pick any group from the list on the left to open its chat.
                   </p>
                 )}
               </WidgetCard>
@@ -288,9 +289,9 @@ export default function ChatPage() {
                 ))
               ) : contacts.length === 0 ? (
                 <div className="text-xs text-white/40 text-center py-6 px-3 space-y-2">
-                  <p>Abhi koi contact nahi.</p>
+                  <p>No contacts yet.</p>
                   <p className="text-white/30 leading-relaxed">
-                    Kisi group mein doosre members hon to woh yahan dikhen ge — un par tap karke DM bhejein.
+                    People from your shared groups will appear here. Tap someone to start a direct message.
                   </p>
                 </div>
               ) : (
@@ -333,9 +334,9 @@ export default function ChatPage() {
                 </p>
                 {!selectedContactId && contacts.length > 0 && (
                   <p className="text-white/45 text-sm mt-2 max-w-xs mx-auto leading-relaxed">
-                    1. Left se person choose karein<br />
-                    2. Neeche message likhein<br />
-                    3. Enter dabayein — live typing bhi dikhe gi
+                    1. Choose a person on the left<br />
+                    2. Type your message below<br />
+                    3. Press Enter to send — typing indicators appear live
                   </p>
                 )}
               </WidgetCard>

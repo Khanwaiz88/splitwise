@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:push": "node scripts/db-push.mjs",
+    "db:apply": "node scripts/apply-migrations-pg.mjs",
     "db:new": "supabase migration new",
     "db:status": "supabase migration list",
     "db:reset": "supabase db reset"
@@ -31,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "pg": "^8.22.0",
     "supabase": "^2.109.1",
     "tailwindcss": "^4",
     "typescript": "^5"
