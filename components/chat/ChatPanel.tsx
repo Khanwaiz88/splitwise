@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import ChatThread from '@/components/chat/ChatThread';
 import ChatInput from '@/components/chat/ChatInput';
-import TypingIndicator from '@/components/chat/TypingIndicator';
+import TypingIndicator, { typingStatusText } from '@/components/chat/TypingIndicator';
 import {
   fetchChatMessages,
   sendChatMessage,
@@ -12,6 +12,18 @@ import {
   type ConversationInfo,
 } from '@/utils/chatApi';
 import { useChatMessages, useChatRealtime } from '@/utils/useChatRealtime';
+import { resolveOfflineProfile, saveProfileCache } from '@/utils/profileCache';
+
+function resolveDisplayName(profile: {
+  display_name?: string | null;
+  email?: string | null;
+}): string {
+  return (
+    profile.display_name?.trim() ||
+    profile.email?.split('@')[0] ||
+    'User'
+  );
+}
 
 export default function ChatPanel({
   conversation,
@@ -24,6 +36,7 @@ export default function ChatPanel({
 }) {
   const [loading, setLoading] = useState(true);
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
+  const [senderName, setSenderName] = useState(currentDisplayName);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { messages, appendMessage } = useChatMessages(
@@ -35,8 +48,31 @@ export default function ChatPanel({
   const { typingUsers, notifyTyping, stopTyping } = useChatRealtime(
     conversation.conversationId,
     currentUserId,
-    currentDisplayName,
+    senderName,
   );
+
+  useEffect(() => {
+    setSenderName(currentDisplayName);
+  }, [currentDisplayName]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    const cached = resolveOfflineProfile();
+    if (cached?.display_name?.trim()) {
+      setSenderName(cached.display_name.trim());
+    }
+    void (async () => {
+      try {
+        const res = await fetch('/api/profile', { credentials: 'include', cache: 'no-store' });
+        const data = await res.json();
+        if (res.ok && data.profile) {
+          const name = resolveDisplayName(data.profile);
+          setSenderName(name);
+          saveProfileCache(data.profile);
+        }
+      } catch { /* use cached name */ }
+    })();
+  }, [currentUserId]);
 
   const loadMessages = useCallback(async () => {
     setLoading(true);
@@ -59,6 +95,7 @@ export default function ChatPanel({
   }, [messages, typingUsers]);
 
   const handleSend = async (body: string) => {
+    stopTyping();
     try {
       const msg = await sendChatMessage(conversation.conversationId, body);
       appendMessage(msg);
@@ -68,12 +105,19 @@ export default function ChatPanel({
     }
   };
 
+  const typingText = typingStatusText(typingUsers);
+  const subtitle = typingText ?? (conversation.type === 'group' ? 'Group chat' : 'Direct message');
+
   return (
     <div className="flex flex-col h-full min-h-0 max-h-full widget widget-violet widget-flush overflow-hidden">
       <div className="shrink-0 px-4 py-3 border-b border-white/10">
         <h2 className="text-sm font-extrabold text-white truncate">{conversation.title}</h2>
-        <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mt-0.5">
-          {conversation.type === 'group' ? 'Group chat' : 'Direct message'}
+        <p
+          className={`text-[11px] font-semibold mt-0.5 truncate transition-colors ${
+            typingText ? 'text-violet-300' : 'text-white/40 uppercase tracking-wider'
+          }`}
+        >
+          {subtitle}
         </p>
       </div>
 
