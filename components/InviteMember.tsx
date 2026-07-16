@@ -104,12 +104,12 @@ export default function InviteMember({
       setInviteLinkUrl(result.joinUrl);
       if (result.emailSent) {
         toast.success(result.hasAccount
-          ? 'Invite sent! They will see Accept/Decline in their Invites tab.'
-          : 'Invite sent by email! They must sign up, then Accept or Decline.');
+          ? 'Invite sent by email! They will see Accept/Decline in their Invites tab.'
+          : 'Invite email sent! They must sign up with that email, then Accept.');
       } else if (result.emailSkipped) {
-        toast.success('Invite saved — they will see it in the app after login.');
+        toast.error('Invite saved but email was NOT sent — email service not configured on server.');
       } else {
-        toast.success('Invite created — they must Accept to join the group.');
+        toast.error('Invite saved but email failed to send — share the link below manually.');
       }
       setQuery('');
       setResults([]);
@@ -251,7 +251,7 @@ export default function InviteMember({
                 <Copy size={12} /> Copy
               </button>
             </div>
-            <p className="text-[10px] text-white/30">Valid 7 days · Also sent by email when SMTP is configured</p>
+            <p className="text-[10px] text-white/30">Valid 7 days · Copy link if email did not arrive</p>
           </div>
         )}
       </div>
