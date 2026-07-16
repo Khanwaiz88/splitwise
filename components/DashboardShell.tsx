@@ -8,6 +8,7 @@ import { loadProfileCache, resolveOfflineProfile } from '@/utils/profileCache';
 import MeshBackground from '@/components/ui/MeshBackground';
 import DashboardNav from '@/components/DashboardNav';
 import ChatNotificationListener from '@/components/ChatNotificationListener';
+import PresenceHeartbeat from '@/components/PresenceHeartbeat';
 
 const OFFLINE_KEY = 'splitwise_offline_data_v2';
 
@@ -55,6 +56,7 @@ export default function DashboardShell({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isChatPage = pathname === '/dashboard/chat';
   const [user, setUser] = useState<ShellUser | null>(null);
   const [ready, setReady] = useState(false);
 
@@ -139,6 +141,7 @@ export default function DashboardShell({
     <div className="min-h-screen text-[var(--fg)] flex relative">
       <MeshBackground />
       <ChatNotificationListener userId={user.id} />
+      <PresenceHeartbeat userId={user.id} />
       <Suspense fallback={null}>
         <DashboardNav
           userId={user.id}
@@ -147,7 +150,7 @@ export default function DashboardShell({
         />
       </Suspense>
       <main className="page-main relative z-10 flex-1">
-        <div className="page-container">{children}</div>
+        <div className={`page-container${isChatPage ? ' page-container-wide' : ''}`}>{children}</div>
       </main>
     </div>
   );

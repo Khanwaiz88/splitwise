@@ -16,6 +16,9 @@ import {
   type DmContact,
 } from '@/utils/chatApi';
 import { useChatUnread } from '@/utils/useChatUnread';
+import { usePresence } from '@/utils/usePresence';
+import { PresenceDot } from '@/components/chat/PresenceIndicator';
+import { presenceStatusLabel } from '@/utils/presenceApi';
 import { resolveOfflineProfile } from '@/utils/profileCache';
 import { createClient } from '@/utils/supabase/client';
 
@@ -59,6 +62,8 @@ export default function ChatPage() {
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentDisplayName, setCurrentDisplayName] = useState('You');
   const { unreadForGroup, unreadForUser } = useChatUnread();
+  const contactIds = contacts.map((c) => c.user_id);
+  const { get: getPresence } = usePresence(contactIds);
 
   useEffect(() => {
     const cached = resolveOfflineProfile();
@@ -200,7 +205,7 @@ export default function ChatPage() {
       </div>
 
       {tab === 'group' && (
-        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 md:min-h-[420px] md:h-[calc(100dvh-14rem)] md:max-h-[720px]">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(260px,320px)_1fr] gap-4 md:min-h-[480px] md:h-[calc(100dvh-12rem)] md:max-h-[840px]">
           <div className={`widget widget-violet widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0 ${selectedGroupId ? 'max-md:hidden' : ''}`}>
             <div className="shrink-0 px-4 py-3 border-b border-white/10">
               <p className="text-xs font-extrabold text-white/50 uppercase tracking-wider">Your Groups</p>
@@ -297,7 +302,7 @@ export default function ChatPage() {
       )}
 
       {tab === 'dm' && (
-        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 md:min-h-[420px] md:h-[calc(100dvh-14rem)] md:max-h-[720px]">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(260px,320px)_1fr] gap-4 md:min-h-[480px] md:h-[calc(100dvh-12rem)] md:max-h-[840px]">
           <div className={`widget widget-fuchsia widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0 ${selectedContactId ? 'max-md:hidden' : ''}`}>
             <div className="shrink-0 px-4 py-3 border-b border-white/10">
               <p className="text-xs font-extrabold text-white/50 uppercase tracking-wider">Direct Messages</p>
@@ -320,6 +325,8 @@ export default function ChatPage() {
                   const active = selectedContactId === c.user_id;
                   const grad = avatarGradient(c.user_id);
                   const unread = unreadForUser(c.user_id);
+                  const presence = getPresence(c.user_id);
+                  const online = presence?.isOnline ?? false;
                   return (
                     <button
                       key={c.user_id}
@@ -335,6 +342,9 @@ export default function ChatPage() {
                         <span className="text-[10px] font-extrabold text-white">
                           {profileInitials(c.display_name)}
                         </span>
+                        <span className="absolute -bottom-0.5 -right-0.5">
+                          <PresenceDot online={online} size="sm" />
+                        </span>
                         {unread > 0 && (
                           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-cyan-500 text-white text-[9px] font-extrabold">
                             {unread > 9 ? '9+' : unread}
@@ -343,7 +353,9 @@ export default function ChatPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-white truncate">{c.display_name}</p>
-                        <p className="text-[10px] text-white/40 truncate">{c.email}</p>
+                        <p className={`text-[10px] truncate ${online ? 'text-lime-400/90' : 'text-white/40'}`}>
+                          {online ? 'Online' : presenceStatusLabel(presence)}
+                        </p>
                       </div>
                     </button>
                   );
