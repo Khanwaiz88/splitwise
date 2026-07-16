@@ -1,12 +1,26 @@
 import nodemailer from 'nodemailer';
 
-type InviteEmailParams = {
+export type InviteEmailParams = {
   to: string;
   groupName: string;
   inviterName: string;
   joinUrl: string;
   hasAccount?: boolean;
 };
+
+export type EmailSendResult = {
+  sent: boolean;
+  skipped: boolean;
+  provider?: 'resend' | 'smtp';
+};
+
+export function isEmailConfigured(): boolean {
+  return isResendConfigured() || isSmtpConfigured();
+}
+
+export function isResendConfigured(): boolean {
+  return !!process.env.RESEND_API_KEY;
+}
 
 export function isSmtpConfigured(): boolean {
   return !!(
@@ -24,7 +38,7 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function buildInviteHtml(params: InviteEmailParams): string {
+export function buildInviteHtml(params: InviteEmailParams): string {
   const cta = params.hasAccount
     ? 'Open Splitwise and go to Invites to Accept or Decline.'
     : 'Create your account with the email below, then Accept or Decline the invite in the app.';
@@ -60,14 +74,42 @@ function buildInviteHtml(params: InviteEmailParams): string {
 </html>`;
 }
 
-/** Send group invite email via SMTP (Gmail, Brevo, etc.). No Resend required. */
-export async function sendInviteEmail(
-  params: InviteEmailParams,
-): Promise<{ sent: boolean; skipped: boolean }> {
-  if (!isSmtpConfigured()) {
-    console.warn('[sendInviteEmail] SMTP not configured — skipping email');
-    return { sent: false, skipped: true };
+function inviteSubject(groupName: string): string {
+  return `You're invited to join "${groupName}" on Splitwise`;
+}
+
+/** Resend free tier: 100 emails/day — https://resend.com */
+async function sendViaResend(params: InviteEmailParams): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+
+  const from = process.env.RESEND_FROM ?? 'Splitwise <onboarding@resend.dev>';
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from,
+      to: [params.to],
+      subject: inviteSubject(params.groupName),
+      html: buildInviteHtml(params),
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.error('[sendInviteEmail] Resend error:', res.status, body);
+    return false;
   }
+
+  return true;
+}
+
+async function sendViaSmtp(params: InviteEmailParams): Promise<boolean> {
+  if (!isSmtpConfigured()) return false;
 
   const from = process.env.SMTP_FROM ?? process.env.SMTP_USER!;
   const port = Number(process.env.SMTP_PORT ?? 587);
@@ -83,16 +125,39 @@ export async function sendInviteEmail(
     },
   });
 
+  await transporter.sendMail({
+    from,
+    to: params.to,
+    subject: inviteSubject(params.groupName),
+    html: buildInviteHtml(params),
+  });
+
+  return true;
+}
+
+/**
+ * Send group invite email.
+ * Priority: Resend API (free tier) → SMTP (Gmail/Brevo) → skip (invite still saved in app).
+ */
+export async function sendInviteEmail(params: InviteEmailParams): Promise<EmailSendResult> {
+  if (!isEmailConfigured()) {
+    console.warn('[sendInviteEmail] No email provider configured — skipping email');
+    return { sent: false, skipped: true };
+  }
+
   try {
-    await transporter.sendMail({
-      from,
-      to: params.to,
-      subject: `You're invited to join "${params.groupName}" on Splitwise`,
-      html: buildInviteHtml(params),
-    });
-    return { sent: true, skipped: false };
+    if (isResendConfigured()) {
+      const ok = await sendViaResend(params);
+      if (ok) return { sent: true, skipped: false, provider: 'resend' };
+      if (!isSmtpConfigured()) return { sent: false, skipped: false };
+    }
+
+    const ok = await sendViaSmtp(params);
+    return ok
+      ? { sent: true, skipped: false, provider: 'smtp' }
+      : { sent: false, skipped: false };
   } catch (err) {
-    console.error('[sendInviteEmail] SMTP error:', err);
+    console.error('[sendInviteEmail] Error:', err);
     return { sent: false, skipped: false };
   }
 }
@@ -102,7 +167,7 @@ export async function sendAddedToGroupEmail(params: InviteEmailParams): Promise<
   const result = await sendInviteEmail({
     ...params,
     hasAccount: true,
-    joinUrl: params.joinUrl.replace(/\/join\/.*$/, '/dashboard'),
+    joinUrl: params.joinUrl.replace(/\/join\/.*$/, '/dashboard/invites'),
   });
   return result.sent;
 }
