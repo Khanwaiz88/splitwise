@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { MessageSquare, Users, User, AlertCircle } from 'lucide-react';
+import { MessageSquare, Users, User, AlertCircle, ChevronLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/ui/PageHeader';
 import WidgetCard from '@/components/ui/WidgetCard';
@@ -198,8 +198,8 @@ export default function ChatPage() {
       </div>
 
       {tab === 'group' && (
-        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 min-h-[420px] h-[calc(100dvh-14rem)] max-h-[720px]">
-          <div className="widget widget-violet widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0">
+        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 md:min-h-[420px] md:h-[calc(100dvh-14rem)] md:max-h-[720px]">
+          <div className={`widget widget-violet widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0 ${selectedGroupId ? 'max-md:hidden' : ''}`}>
             <div className="shrink-0 px-4 py-3 border-b border-white/10">
               <p className="text-xs font-extrabold text-white/50 uppercase tracking-wider">Your Groups</p>
             </div>
@@ -243,7 +243,20 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className="min-h-[320px] md:min-h-0 flex flex-col gap-3">
+          <div className={`min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedGroupId ? 'max-md:hidden' : 'max-md:flex-1'}`}>
+            {selectedGroupId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedGroupId(null);
+                  setGroupConversation(null);
+                  setGroupError('');
+                }}
+                className="md:hidden flex items-center gap-2 text-sm font-bold text-violet-300 px-1 py-1"
+              >
+                <ChevronLeft size={20} /> Back to groups
+              </button>
+            )}
             {!selectedGroupId || loadingGroupChat ? (
               <WidgetCard variant="violet" hover={false} className="flex-1 flex items-center justify-center text-center py-12">
                 <MessageSquare size={40} className="text-violet-400/40 mx-auto mb-3" />
@@ -263,7 +276,7 @@ export default function ChatPage() {
                 <p className="text-rose-200 text-sm">{groupError}</p>
               </WidgetCard>
             ) : groupConversation && currentUserId ? (
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 chat-panel-mobile">
                 <ChatPanel
                   conversation={{ ...groupConversation, title: selectedGroup?.name ?? groupConversation.title }}
                   currentUserId={currentUserId}
@@ -276,11 +289,11 @@ export default function ChatPage() {
       )}
 
       {tab === 'dm' && (
-        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 min-h-[420px] h-[calc(100dvh-14rem)] max-h-[720px]">
-          <div className="widget widget-fuchsia widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0">
+        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 md:min-h-[420px] md:h-[calc(100dvh-14rem)] md:max-h-[720px]">
+          <div className={`widget widget-fuchsia widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0 ${selectedContactId ? 'max-md:hidden' : ''}`}>
             <div className="shrink-0 px-4 py-3 border-b border-white/10">
               <p className="text-xs font-extrabold text-white/50 uppercase tracking-wider">Direct Messages</p>
-              <p className="text-[10px] text-white/35 mt-1">Shared groups ke members</p>
+              <p className="text-[10px] text-white/35 mt-1">Members from your shared groups</p>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
               {loadingContacts ? (
@@ -325,7 +338,19 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className="min-h-[320px] md:min-h-0 flex flex-col gap-3">
+          <div className={`min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedContactId ? 'max-md:hidden' : 'max-md:flex-1'}`}>
+            {selectedContactId && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedContactId(null);
+                  setDmConversation(null);
+                }}
+                className="md:hidden flex items-center gap-2 text-sm font-bold text-violet-300 px-1 py-1"
+              >
+                <ChevronLeft size={20} /> Back to contacts
+              </button>
+            )}
             {!selectedContactId || loadingDm ? (
               <WidgetCard variant="violet" hover={false} className="flex-1 flex items-center justify-center text-center py-12">
                 <MessageSquare size={40} className="text-violet-400/40 mx-auto mb-3" />
@@ -341,7 +366,7 @@ export default function ChatPage() {
                 )}
               </WidgetCard>
             ) : dmConversation && currentUserId ? (
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 chat-panel-mobile">
                 <ChatPanel
                   conversation={dmConversation}
                   currentUserId={currentUserId}

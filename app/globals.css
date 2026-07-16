@@ -361,6 +361,17 @@ select.input-field option {
 .pb-safe { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
 .pt-safe { padding-top: max(0.75rem, env(safe-area-inset-top)); }
 
+/* Chat input clears mobile bottom nav (incl. floating Add button) */
+@media (max-width: 767px) {
+  .chat-input-bar {
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  }
+  .chat-panel-mobile {
+    min-height: calc(100dvh - 11.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    max-height: calc(100dvh - 11.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* ── Page layout spacing ── */
 .page-main {
   flex: 1;

@@ -35,7 +35,7 @@ export default function ChatInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="shrink-0 p-3 border-t border-[var(--border-subtle)] bg-[var(--nav-bg)]/80 backdrop-blur-md"
+      className="shrink-0 p-3 border-t border-[var(--border-subtle)] bg-[var(--nav-bg)]/95 backdrop-blur-md chat-input-bar"
     >
       <div className="flex gap-2 items-end">
         <textarea

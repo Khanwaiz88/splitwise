@@ -69,7 +69,7 @@ export default function ChatPanel({
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 widget widget-violet widget-flush overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 max-h-full widget widget-violet widget-flush overflow-hidden">
       <div className="shrink-0 px-4 py-3 border-b border-white/10">
         <h2 className="text-sm font-extrabold text-white truncate">{conversation.title}</h2>
         <p className="text-[10px] text-white/40 font-semibold uppercase tracking-wider mt-0.5">
