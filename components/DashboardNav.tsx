@@ -304,12 +304,12 @@ export default function DashboardNav({
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav — Home | Add (center) | Groups */}
+      {/* Mobile Bottom Nav — Home | Groups | Add (center) | Profile */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 nav-bar-solid border-t pb-safe">
-        <div className="grid grid-cols-3 items-end px-6 pt-2 pb-2 max-w-sm mx-auto">
+        <div className="grid grid-cols-4 items-end px-4 pt-2 pb-2 max-w-md mx-auto">
           <Link
             href="/dashboard"
-            className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all justify-self-start ${
+            className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${
               pathname === '/dashboard' && action !== 'add' ? 'text-violet-300' : 'text-white/40'
             }`}
           >
@@ -317,7 +317,17 @@ export default function DashboardNav({
             <span className="text-[10px] font-semibold">Home</span>
           </Link>
 
-          <Link href="/dashboard?action=add" className="flex flex-col items-center gap-0.5 -mt-5 justify-self-center">
+          <Link
+            href="/dashboard/groups"
+            className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${
+              pathname === '/dashboard/groups' ? 'text-violet-300' : 'text-white/40'
+            }`}
+          >
+            <Users size={22} strokeWidth={pathname === '/dashboard/groups' ? 2.5 : 2} />
+            <span className="text-[10px] font-semibold">Groups</span>
+          </Link>
+
+          <Link href="/dashboard?action=add" className="flex flex-col items-center gap-0.5 -mt-5">
             <span className={`w-14 h-14 rounded-2xl btn-gradient flex items-center justify-center shadow-xl shadow-violet-500/40 ring-4 ring-[var(--bg-base)] ${isAddActive ? 'scale-105' : ''}`}>
               <PlusCircle size={26} className="text-white" />
             </span>
@@ -325,13 +335,13 @@ export default function DashboardNav({
           </Link>
 
           <Link
-            href="/dashboard/groups"
-            className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all justify-self-end ${
-              pathname === '/dashboard/groups' ? 'text-violet-300' : 'text-white/40'
+            href="/dashboard/profile"
+            className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${
+              isProfileActive ? 'text-violet-300' : 'text-white/40'
             }`}
           >
-            <Users size={22} strokeWidth={pathname === '/dashboard/groups' ? 2.5 : 2} />
-            <span className="text-[10px] font-semibold">Groups</span>
+            <User size={22} strokeWidth={isProfileActive ? 2.5 : 2} />
+            <span className="text-[10px] font-semibold">Profile</span>
           </Link>
         </div>
       </nav>
