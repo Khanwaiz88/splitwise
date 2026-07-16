@@ -54,6 +54,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const groupId = body.groupId as string;
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const sendEmail = body.sendEmail !== false;
 
     if (!groupId || !email) {
       return NextResponse.json({ error: 'groupId and email are required' }, { status: 400 });
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
       email,
       inviterId: user.id,
       origin: appOrigin(request),
+      sendEmail,
     });
 
     return NextResponse.json({

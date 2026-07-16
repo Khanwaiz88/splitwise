@@ -20,6 +20,7 @@ export async function createGroupInvite(
     email: string;
     inviterId: string;
     origin: string;
+    sendEmail?: boolean;
   },
 ): Promise<CreateGroupInviteResult> {
   const email = params.email.trim().toLowerCase();
@@ -103,13 +104,15 @@ export async function createGroupInvite(
     throw new Error(inviteError.message);
   }
 
-  const emailResult = await sendInviteEmail({
-    to: email,
-    groupName: groupRow?.name ?? 'a group',
-    inviterName,
-    joinUrl,
-    hasAccount: !!existingProfile,
-  });
+  const emailResult = params.sendEmail === false
+    ? { sent: false, skipped: true }
+    : await sendInviteEmail({
+        to: email,
+        groupName: groupRow?.name ?? 'a group',
+        inviterName,
+        joinUrl,
+        hasAccount: !!existingProfile,
+      });
 
   return {
     token,

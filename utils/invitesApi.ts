@@ -40,13 +40,17 @@ export async function addMemberByEmail(groupId: string, email: string): Promise<
   return data as AddedMember;
 }
 
-/** Send invite — creates pending invite, in-app inbox + SMTP email */
-export async function sendGroupInvite(groupId: string, email: string): Promise<InviteLink> {
+/** Send invite — creates pending invite, optional email delivery */
+export async function sendGroupInvite(
+  groupId: string,
+  email: string,
+  options?: { sendEmail?: boolean },
+): Promise<InviteLink> {
   const res = await fetch('/api/invites', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ groupId, email }),
+    body: JSON.stringify({ groupId, email, sendEmail: options?.sendEmail !== false }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error ?? 'Failed to create invite');
