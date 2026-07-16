@@ -1,8 +1,11 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, PlusCircle, Activity, Users, Sparkles, User, Inbox, MessageSquare } from 'lucide-react';
+import {
+  Home, PlusCircle, Activity, Users, Sparkles, User, Inbox, MessageSquare, Menu, X,
+} from 'lucide-react';
 import GroupSwitcher from '@/components/GroupSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import PendingInvitesBadge from '@/components/PendingInvitesBadge';
@@ -18,10 +21,24 @@ const NAV_ITEMS = [
   { href: '/dashboard/profile', label: 'Profile', icon: User, match: (p: string) => p === '/dashboard/profile' },
 ];
 
-function NavLink({ href, label, icon: Icon, active }: { href: string; label: string; icon: typeof Home; active: boolean }) {
+const MOBILE_DRAWER = NAV_ITEMS.filter((item) =>
+  item.href === '/dashboard/chat' ||
+  item.href === '/dashboard/invites' ||
+  item.href === '/dashboard/profile' ||
+  item.href === '/dashboard/activity',
+);
+
+function NavLink({ href, label, icon: Icon, active, onClick }: {
+  href: string;
+  label: string;
+  icon: typeof Home;
+  active: boolean;
+  onClick?: () => void;
+}) {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
         active
           ? 'bg-gradient-to-r from-violet-500/25 to-fuchsia-500/20 text-white border border-violet-500/30 shadow-lg shadow-violet-500/10'
@@ -57,22 +74,115 @@ export default function DashboardNav({
   const isProfileActive = pathname === '/dashboard/profile';
   const grad = avatarGradient(userId);
   const pendingInviteCount = usePendingInviteCount();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname, action]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [drawerOpen]);
+
+  const closeDrawer = () => setDrawerOpen(false);
 
   return (
     <>
-      {/* Mobile top bar — group switcher (sidebar is desktop-only) */}
+      {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 inset-x-0 z-50 nav-bar-solid border-b pt-safe">
-        <div className="px-4 pb-3 pt-1 flex items-start gap-2">
+        <div className="px-3 pb-3 pt-1 flex items-start gap-2">
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="relative shrink-0 p-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--fg-muted)] hover:text-[var(--fg)] transition-colors mt-5"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+            {pendingInviteCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-extrabold border-2 border-[var(--nav-bg)]">
+                {pendingInviteCount > 9 ? '9+' : pendingInviteCount}
+              </span>
+            )}
+          </button>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest mb-1.5 px-0.5">
               Active Group
             </p>
             <GroupSwitcher userId={userId} />
           </div>
-          <ThemeToggle compact />
-          <PendingInvitesBadge compact />
+          <div className="shrink-0 mt-5">
+            <ThemeToggle compact />
+          </div>
         </div>
       </div>
+
+      {/* Mobile slide-out sidebar */}
+      {drawerOpen && (
+        <div className="md:hidden fixed inset-0 z-[60]">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            aria-label="Close menu"
+            onClick={closeDrawer}
+          />
+          <aside className="absolute inset-y-0 left-0 w-[min(280px,85vw)] nav-bar-solid border-r shadow-2xl flex flex-col pt-safe pb-safe animate-fade-in-up">
+            <div className="shrink-0 p-4 flex items-center justify-between border-b border-[var(--border-subtle)]">
+              <Link href="/dashboard" onClick={closeDrawer} className="flex items-center gap-2">
+                <span className="icon-badge bg-gradient-to-br from-violet-500 to-fuchsia-500">
+                  <Sparkles size={16} className="text-white" />
+                </span>
+                <span className="text-lg font-extrabold gradient-text">Splitwise</span>
+              </Link>
+              <button
+                type="button"
+                onClick={closeDrawer}
+                className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/5"
+                aria-label="Close menu"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <nav className="flex-1 overflow-y-auto p-4 flex flex-col gap-1.5">
+              <p className="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest px-1 mb-1">More</p>
+              {MOBILE_DRAWER.map(({ href, label, icon, match }) => (
+                <NavLink
+                  key={href}
+                  href={href}
+                  label={label}
+                  icon={icon}
+                  active={match(pathname, action ?? '')}
+                  onClick={closeDrawer}
+                />
+              ))}
+            </nav>
+
+            <div className="shrink-0 p-4 border-t border-[var(--border-subtle)] space-y-3">
+              <ThemeToggle />
+              <Link
+                href="/dashboard/profile"
+                onClick={closeDrawer}
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
+                  isProfileActive
+                    ? 'bg-violet-500/15 border border-violet-500/25'
+                    : 'hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shrink-0 shadow-lg`}>
+                  <span className="text-xs font-extrabold text-white">{profileInitials(displayName)}</span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-white truncate">{displayName}</p>
+                  <p className="text-xs text-white/40 truncate">{userEmail}</p>
+                </div>
+              </Link>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 shrink-0 nav-bar-solid border-r h-dvh max-h-dvh sticky top-0 z-40 overflow-hidden">
@@ -128,74 +238,34 @@ export default function DashboardNav({
         </div>
       </aside>
 
-      {/* Mobile Bottom Nav */}
+      {/* Mobile Bottom Nav — Home | Add (center) | Groups */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 nav-bar-solid border-t pb-safe">
-        <div className="flex items-end justify-around px-1 pt-2.5 pb-2">
-          {NAV_ITEMS.filter((item) =>
-            item.href !== '/dashboard/profile' &&
-            item.href !== '/dashboard/activity' &&
-            item.href !== '/dashboard/invites' &&
-            item.href !== '/dashboard/chat',
-          ).map(({ href, label, icon: Icon, match }) => {
-            const active = match(pathname, action ?? '');
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[52px] ${
-                  active ? 'text-violet-300' : 'text-white/40'
-                }`}
-              >
-                <Icon size={21} strokeWidth={active ? 2.5 : 2} />
-                <span className="text-[10px] font-semibold">{label}</span>
-              </Link>
-            );
-          })}
-
+        <div className="grid grid-cols-3 items-end px-6 pt-2 pb-2 max-w-sm mx-auto">
           <Link
-            href="/dashboard/chat"
-            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[52px] ${
-              pathname === '/dashboard/chat' ? 'text-violet-300' : 'text-white/40'
+            href="/dashboard"
+            className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all justify-self-start ${
+              pathname === '/dashboard' && action !== 'add' ? 'text-violet-300' : 'text-white/40'
             }`}
           >
-            <MessageSquare size={21} strokeWidth={pathname === '/dashboard/chat' ? 2.5 : 2} />
-            <span className="text-[10px] font-semibold">Chat</span>
+            <Home size={22} strokeWidth={pathname === '/dashboard' && action !== 'add' ? 2.5 : 2} />
+            <span className="text-[10px] font-semibold">Home</span>
           </Link>
 
-          <Link
-            href="/dashboard/invites"
-            className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all min-w-[52px] ${
-              pathname === '/dashboard/invites' ? 'text-violet-300' : 'text-white/40'
-            }`}
-          >
-            <span className="relative">
-              <Inbox size={21} strokeWidth={pathname === '/dashboard/invites' ? 2.5 : 2} />
-              {pendingInviteCount > 0 && (
-                <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] px-0.5 flex items-center justify-center rounded-full bg-rose-500 text-white text-[8px] font-extrabold">
-                  {pendingInviteCount > 9 ? '9+' : pendingInviteCount}
-                </span>
-              )}
-            </span>
-            <span className="text-[10px] font-semibold">Invites</span>
-          </Link>
-
-          <Link href="/dashboard?action=add" className="flex flex-col items-center gap-0.5 px-1 -mt-5">
-            <span className="w-14 h-14 rounded-2xl btn-gradient flex items-center justify-center shadow-xl shadow-violet-500/40 ring-4 ring-[var(--bg-base)]">
+          <Link href="/dashboard?action=add" className="flex flex-col items-center gap-0.5 -mt-5 justify-self-center">
+            <span className={`w-14 h-14 rounded-2xl btn-gradient flex items-center justify-center shadow-xl shadow-violet-500/40 ring-4 ring-[var(--bg-base)] ${isAddActive ? 'scale-105' : ''}`}>
               <PlusCircle size={26} className="text-white" />
             </span>
             <span className="text-[10px] font-bold text-violet-300 mt-1">Add</span>
           </Link>
 
           <Link
-            href="/dashboard/profile"
-            className={`flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-xl transition-all ${
-              isProfileActive ? 'text-violet-300' : 'text-white/40'
+            href="/dashboard/groups"
+            className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all justify-self-end ${
+              pathname === '/dashboard/groups' ? 'text-violet-300' : 'text-white/40'
             }`}
           >
-            <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center ${isProfileActive ? 'ring-2 ring-violet-400/50' : ''}`}>
-              <span className="text-[9px] font-extrabold text-white">{profileInitials(displayName)}</span>
-            </div>
-            <span className="text-[10px] font-semibold">Profile</span>
+            <Users size={22} strokeWidth={pathname === '/dashboard/groups' ? 2.5 : 2} />
+            <span className="text-[10px] font-semibold">Groups</span>
           </Link>
         </div>
       </nav>
