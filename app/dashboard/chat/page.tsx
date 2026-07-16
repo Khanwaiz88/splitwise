@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { MessageSquare, Users, User } from 'lucide-react';
+import { MessageSquare, Users, User, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/ui/PageHeader';
 import WidgetCard from '@/components/ui/WidgetCard';
 import ChatPanel from '@/components/chat/ChatPanel';
 import { avatarGradient } from '@/utils/avatarColor';
+import { fetchMyGroups } from '@/utils/groupsApi';
 import {
   fetchDmContacts,
   openDmChat,
@@ -17,10 +18,8 @@ import {
 import { resolveOfflineProfile } from '@/utils/profileCache';
 import { createClient } from '@/utils/supabase/client';
 
-const ACTIVE_GROUP_KEY = 'splitwise_active_group';
-const GROUPS_CACHE_KEY = 'splitwise_groups_cache';
-
 type Tab = 'group' | 'dm';
+type GroupItem = { id: string; name: string; memberCount: number };
 
 function profileInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -29,15 +28,31 @@ function profileInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function groupInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'G';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function isSetupError(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return m.includes('does not exist') || m.includes('function') || m.includes('relation') || m.includes('conversations');
+}
+
 export default function ChatPage() {
   const [tab, setTab] = useState<Tab>('group');
-  const [groupId, setGroupId] = useState<string | null>(null);
-  const [groupName, setGroupName] = useState('Group');
+  const [groups, setGroups] = useState<GroupItem[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [groupConversation, setGroupConversation] = useState<ConversationInfo | null>(null);
+  const [groupError, setGroupError] = useState('');
+  const [loadingGroups, setLoadingGroups] = useState(true);
+  const [loadingGroupChat, setLoadingGroupChat] = useState(false);
+
   const [contacts, setContacts] = useState<DmContact[]>([]);
   const [dmConversation, setDmConversation] = useState<ConversationInfo | null>(null);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingDm, setLoadingDm] = useState(false);
 
   const [currentUserId, setCurrentUserId] = useState('');
@@ -65,46 +80,60 @@ export default function ChatPage() {
     })();
   }, []);
 
-  const resolveActiveGroup = useCallback(() => {
-    const savedId = localStorage.getItem(ACTIVE_GROUP_KEY);
+  const loadGroups = useCallback(async () => {
+    setLoadingGroups(true);
     try {
-      const raw = localStorage.getItem(GROUPS_CACHE_KEY);
-      const groups = raw ? JSON.parse(raw) as Array<{ id: string; name: string }> : [];
-      const active = groups.find((g) => g.id === savedId) ?? groups[0] ?? null;
-      if (active) {
-        setGroupId(active.id);
-        setGroupName(active.name);
-      } else {
-        setGroupId(null);
-        setGroupName('No group selected');
-      }
-    } catch {
-      setGroupId(savedId);
+      const { groups: fetched } = await fetchMyGroups();
+      const mapped = fetched.map((g) => ({
+        id: g.id,
+        name: g.name,
+        memberCount: g.memberCount,
+      }));
+      setGroups(mapped);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to load groups');
+      setGroups([]);
+    } finally {
+      setLoadingGroups(false);
     }
   }, []);
 
-  const loadGroupChat = useCallback(async (gid: string) => {
+  const openGroup = useCallback(async (gid: string) => {
+    setSelectedGroupId(gid);
+    setGroupConversation(null);
+    setGroupError('');
+    setLoadingGroupChat(true);
     try {
       const conv = await openGroupChat(gid);
       setGroupConversation(conv);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to open group chat');
+      const msg = err instanceof Error ? err.message : 'Failed to open group chat';
+      setGroupError(msg);
       setGroupConversation(null);
+      if (!isSetupError(msg)) toast.error(msg);
+    } finally {
+      setLoadingGroupChat(false);
     }
   }, []);
 
   const loadContacts = useCallback(async () => {
+    setLoadingContacts(true);
     try {
       const rows = await fetchDmContacts();
       setContacts(rows);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load contacts');
+      const msg = err instanceof Error ? err.message : 'Failed to load contacts';
+      toast.error(msg);
+      setContacts([]);
+    } finally {
+      setLoadingContacts(false);
     }
   }, []);
 
   const openContact = useCallback(async (userId: string) => {
     setSelectedContactId(userId);
     setLoadingDm(true);
+    setDmConversation(null);
     try {
       const conv = await openDmChat(userId);
       setDmConversation(conv);
@@ -117,39 +146,30 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    resolveActiveGroup();
-    setLoading(false);
-
-    const onGroupChanged = (e: Event) => {
-      const detail = (e as CustomEvent<{ groupId: string }>).detail;
-      if (detail?.groupId) {
-        setGroupId(detail.groupId);
-        try {
-          const raw = localStorage.getItem(GROUPS_CACHE_KEY);
-          const groups = raw ? JSON.parse(raw) as Array<{ id: string; name: string }> : [];
-          const g = groups.find((x) => x.id === detail.groupId);
-          if (g) setGroupName(g.name);
-        } catch { /* ignore */ }
-      } else {
-        resolveActiveGroup();
-      }
-    };
-
-    window.addEventListener('groupChanged', onGroupChanged);
-    return () => window.removeEventListener('groupChanged', onGroupChanged);
-  }, [resolveActiveGroup]);
+    if (tab === 'group') loadGroups();
+  }, [tab, loadGroups]);
 
   useEffect(() => {
-    if (groupId && tab === 'group') {
-      loadGroupChat(groupId);
-    }
-  }, [groupId, tab, loadGroupChat]);
-
-  useEffect(() => {
-    if (tab === 'dm') {
-      loadContacts();
-    }
+    if (tab === 'dm') loadContacts();
   }, [tab, loadContacts]);
+
+  const selectedGroup = groups.find((g) => g.id === selectedGroupId);
+
+  const setupHint = (
+    <WidgetCard variant="amber" hover={false} className="text-left">
+      <div className="flex gap-3">
+        <AlertCircle className="text-amber-300 shrink-0 mt-0.5" size={22} />
+        <div>
+          <p className="text-amber-100 font-bold text-sm">Chat database not ready</p>
+          <p className="text-amber-200/70 text-xs mt-2 leading-relaxed">
+            Supabase par chat migration apply karni hogi. Dashboard → SQL Editor mein{' '}
+            <code className="text-amber-100">20260716140000_chat.sql</code> run karein,
+            ya <code className="text-amber-100">npm run db:push</code> chalayein.
+          </p>
+        </div>
+      </div>
+    </WidgetCard>
+  );
 
   return (
     <div className="page-stack">
@@ -176,21 +196,81 @@ export default function ChatPage() {
         </button>
       </div>
 
-      {tab === 'group' && !groupId && !loading && (
-        <WidgetCard variant="violet" hover={false} className="text-center py-12">
-          <MessageSquare size={40} className="text-violet-400/40 mx-auto mb-3" />
-          <p className="text-white font-bold">No group selected</p>
-          <p className="text-white/45 text-sm mt-2">Create or select a group from the sidebar first.</p>
-        </WidgetCard>
-      )}
+      {tab === 'group' && (
+        <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 min-h-[420px] h-[calc(100dvh-14rem)] max-h-[720px]">
+          <div className="widget widget-violet widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0">
+            <div className="shrink-0 px-4 py-3 border-b border-white/10">
+              <p className="text-xs font-extrabold text-white/50 uppercase tracking-wider">Your Groups</p>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
+              {loadingGroups ? (
+                [1, 2, 3].map((i) => (
+                  <div key={i} className="h-14 widget animate-shimmer rounded-xl" />
+                ))
+              ) : groups.length === 0 ? (
+                <p className="text-xs text-white/40 text-center py-6 px-2">
+                  No groups yet. Create one from Groups page first.
+                </p>
+              ) : (
+                groups.map((g) => {
+                  const active = selectedGroupId === g.id;
+                  const grad = avatarGradient(g.id);
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => openGroup(g.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                        active
+                          ? 'bg-violet-500/20 border border-violet-500/30'
+                          : 'hover:bg-white/5 border border-transparent'
+                      }`}
+                    >
+                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center shrink-0`}>
+                        <span className="text-[10px] font-extrabold text-white">
+                          {groupInitials(g.name)}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{g.name}</p>
+                        <p className="text-[10px] text-white/40">{g.memberCount} members</p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
-      {tab === 'group' && groupId && groupConversation && currentUserId && (
-        <div className="h-[calc(100dvh-14rem)] min-h-[420px] max-h-[720px]">
-          <ChatPanel
-            conversation={{ ...groupConversation, title: groupName }}
-            currentUserId={currentUserId}
-            currentDisplayName={currentDisplayName}
-          />
+          <div className="min-h-[320px] md:min-h-0 flex flex-col gap-3">
+            {!selectedGroupId || loadingGroupChat ? (
+              <WidgetCard variant="violet" hover={false} className="flex-1 flex items-center justify-center text-center py-12">
+                <MessageSquare size={40} className="text-violet-400/40 mx-auto mb-3" />
+                <p className="text-white font-bold">
+                  {loadingGroupChat ? 'Opening group chat…' : 'Select a group to chat'}
+                </p>
+                {!selectedGroupId && (
+                  <p className="text-white/45 text-sm mt-2 max-w-xs mx-auto">
+                    Left side se koi bhi group choose karein — saari groups yahan dikhen gi.
+                  </p>
+                )}
+              </WidgetCard>
+            ) : groupError && isSetupError(groupError) ? (
+              setupHint
+            ) : groupError ? (
+              <WidgetCard variant="rose" hover={false} className="text-center py-8">
+                <p className="text-rose-200 text-sm">{groupError}</p>
+              </WidgetCard>
+            ) : groupConversation && currentUserId ? (
+              <div className="flex-1 min-h-0">
+                <ChatPanel
+                  conversation={{ ...groupConversation, title: selectedGroup?.name ?? groupConversation.title }}
+                  currentUserId={currentUserId}
+                  currentDisplayName={currentDisplayName}
+                />
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
 
@@ -198,13 +278,21 @@ export default function ChatPage() {
         <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-4 min-h-[420px] h-[calc(100dvh-14rem)] max-h-[720px]">
           <div className="widget widget-fuchsia widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0">
             <div className="shrink-0 px-4 py-3 border-b border-white/10">
-              <p className="text-xs font-extrabold text-white/50 uppercase tracking-wider">People</p>
+              <p className="text-xs font-extrabold text-white/50 uppercase tracking-wider">Direct Messages</p>
+              <p className="text-[10px] text-white/35 mt-1">Shared groups ke members</p>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1">
-              {contacts.length === 0 ? (
-                <p className="text-xs text-white/40 text-center py-6 px-2">
-                  No contacts yet. Join a group with other members to DM them.
-                </p>
+              {loadingContacts ? (
+                [1, 2].map((i) => (
+                  <div key={i} className="h-14 widget animate-shimmer rounded-xl" />
+                ))
+              ) : contacts.length === 0 ? (
+                <div className="text-xs text-white/40 text-center py-6 px-3 space-y-2">
+                  <p>Abhi koi contact nahi.</p>
+                  <p className="text-white/30 leading-relaxed">
+                    Kisi group mein doosre members hon to woh yahan dikhen ge — un par tap karke DM bhejein.
+                  </p>
+                </div>
               ) : (
                 contacts.map((c) => {
                   const active = selectedContactId === c.user_id;
@@ -236,16 +324,23 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className="min-h-[320px] md:min-h-0">
+          <div className="min-h-[320px] md:min-h-0 flex flex-col gap-3">
             {!selectedContactId || loadingDm ? (
-              <WidgetCard variant="violet" hover={false} className="h-full flex items-center justify-center text-center py-12">
+              <WidgetCard variant="violet" hover={false} className="flex-1 flex items-center justify-center text-center py-12">
                 <MessageSquare size={40} className="text-violet-400/40 mx-auto mb-3" />
                 <p className="text-white font-bold">
                   {loadingDm ? 'Opening chat…' : 'Select someone to message'}
                 </p>
+                {!selectedContactId && contacts.length > 0 && (
+                  <p className="text-white/45 text-sm mt-2 max-w-xs mx-auto leading-relaxed">
+                    1. Left se person choose karein<br />
+                    2. Neeche message likhein<br />
+                    3. Enter dabayein — live typing bhi dikhe gi
+                  </p>
+                )}
               </WidgetCard>
             ) : dmConversation && currentUserId ? (
-              <div className="h-full">
+              <div className="flex-1 min-h-0">
                 <ChatPanel
                   conversation={dmConversation}
                   currentUserId={currentUserId}
@@ -255,12 +350,6 @@ export default function ChatPage() {
             ) : null}
           </div>
         </div>
-      )}
-
-      {tab === 'group' && groupId && !groupConversation && !loading && (
-        <WidgetCard variant="violet" hover={false} className="text-center py-12">
-          <p className="text-white/50 text-sm">Could not load group chat.</p>
-        </WidgetCard>
       )}
     </div>
   );
