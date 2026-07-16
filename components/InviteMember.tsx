@@ -95,7 +95,7 @@ export default function InviteMember({
       } else if (result.emailSkipped) {
         toast.error('Invite saved but email NOT sent — server email not configured.');
       } else {
-        toast.error('Invite saved but email failed — share the link below.');
+        toast.error(result.emailError ?? 'Invite saved but email failed — use Link tab or copy below.');
       }
     } else {
       toast.success('Invite link ready — copy and share it!');
@@ -223,7 +223,7 @@ export default function InviteMember({
               <span className="text-sm font-extrabold">Send invite via Gmail / email</span>
             </button>
             <p className="text-xs text-white/40 px-1">
-              Sends automatically via Resend or SMTP. They must <strong className="text-white/60">Accept</strong> before joining.
+              Uses Resend or Gmail SMTP. To email <strong className="text-white/60">any</strong> address, add Gmail SMTP on Vercel (see .env.example).
             </p>
           </div>
         )}

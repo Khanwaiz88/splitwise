@@ -12,6 +12,7 @@ export type EmailSendResult = {
   sent: boolean;
   skipped: boolean;
   provider?: 'resend' | 'smtp';
+  error?: string;
 };
 
 export function isEmailConfigured(): boolean {
@@ -79,9 +80,9 @@ function inviteSubject(groupName: string): string {
 }
 
 /** Resend free tier: 100 emails/day — https://resend.com */
-async function sendViaResend(params: InviteEmailParams): Promise<boolean> {
+async function sendViaResend(params: InviteEmailParams): Promise<{ ok: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return false;
+  if (!apiKey) return { ok: false };
 
   const from = process.env.RESEND_FROM ?? 'Splitwise <onboarding@resend.dev>';
 
@@ -102,10 +103,20 @@ async function sendViaResend(params: InviteEmailParams): Promise<boolean> {
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     console.error('[sendInviteEmail] Resend error:', res.status, body);
-    return false;
+    let message = 'Email provider rejected the send request.';
+    try {
+      const parsed = JSON.parse(body) as { message?: string };
+      if (parsed.message) message = parsed.message;
+    } catch {
+      if (body) message = body.slice(0, 200);
+    }
+    if (message.includes('only send testing emails')) {
+      message = 'Resend test mode: can only email your Resend account address. Add Gmail SMTP on Vercel, or verify a domain at resend.com/domains.';
+    }
+    return { ok: false, error: message };
   }
 
-  return true;
+  return { ok: true };
 }
 
 async function sendViaSmtp(params: InviteEmailParams): Promise<boolean> {
@@ -147,18 +158,24 @@ export async function sendInviteEmail(params: InviteEmailParams): Promise<EmailS
 
   try {
     if (isResendConfigured()) {
-      const ok = await sendViaResend(params);
-      if (ok) return { sent: true, skipped: false, provider: 'resend' };
-      if (!isSmtpConfigured()) return { sent: false, skipped: false };
+      const resend = await sendViaResend(params);
+      if (resend.ok) return { sent: true, skipped: false, provider: 'resend' };
+      if (!isSmtpConfigured()) {
+        return { sent: false, skipped: false, error: resend.error };
+      }
     }
 
     const ok = await sendViaSmtp(params);
     return ok
       ? { sent: true, skipped: false, provider: 'smtp' }
-      : { sent: false, skipped: false };
+      : { sent: false, skipped: false, error: 'SMTP send failed. Check Gmail App Password on Vercel.' };
   } catch (err) {
     console.error('[sendInviteEmail] Error:', err);
-    return { sent: false, skipped: false };
+    return {
+      sent: false,
+      skipped: false,
+      error: err instanceof Error ? err.message : 'Email send failed',
+    };
   }
 }
 

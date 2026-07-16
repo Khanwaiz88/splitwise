@@ -13,6 +13,7 @@ export type InviteLink = {
   hasAccount?: boolean;
   emailSent?: boolean;
   emailSkipped?: boolean;
+  emailError?: string;
 };
 
 export type PendingInvite = {

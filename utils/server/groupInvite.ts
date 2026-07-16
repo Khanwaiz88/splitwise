@@ -10,6 +10,7 @@ export type CreateGroupInviteResult = {
   hasAccount: boolean;
   emailSent: boolean;
   emailSkipped: boolean;
+  emailError?: string;
   resent: boolean;
 };
 
@@ -122,6 +123,7 @@ export async function createGroupInvite(
     hasAccount: !!existingProfile,
     emailSent: emailResult.sent,
     emailSkipped: emailResult.skipped,
+    emailError: emailResult.error,
     resent,
   };
 }

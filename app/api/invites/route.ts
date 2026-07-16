@@ -95,6 +95,7 @@ export async function POST(request: Request) {
       hasAccount: result.hasAccount,
       emailSent: result.emailSent,
       emailSkipped: result.emailSkipped,
+      emailError: result.emailError,
       resent: result.resent,
     });
   } catch (err) {
