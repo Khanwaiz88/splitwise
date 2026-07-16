@@ -76,6 +76,33 @@ export async function sendChatMessage(conversationId: string, body: string): Pro
   return data.message as ChatMessage;
 }
 
+export type ChatUnreadItem = {
+  conversationId: string;
+  unreadCount: number;
+  type: 'group' | 'dm';
+  title: string;
+  groupId?: string;
+  otherUserId?: string;
+};
+
+export async function fetchChatUnread(): Promise<{ total: number; items: ChatUnreadItem[] }> {
+  const res = await fetch('/api/chat/unread', { credentials: 'include', cache: 'no-store' });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Failed to load unread messages');
+  return data as { total: number; items: ChatUnreadItem[] };
+}
+
+export async function markConversationRead(conversationId: string): Promise<void> {
+  const res = await fetch('/api/chat/read', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ conversationId }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? 'Failed to mark conversation read');
+}
+
 export function formatChatTime(iso: string): string {
   const d = new Date(iso);
   const now = new Date();

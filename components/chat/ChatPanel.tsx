@@ -8,10 +8,12 @@ import TypingIndicator, { typingStatusText } from '@/components/chat/TypingIndic
 import {
   fetchChatMessages,
   sendChatMessage,
+  markConversationRead,
   type ChatMessage,
   type ConversationInfo,
 } from '@/utils/chatApi';
 import { useChatMessages, useChatRealtime } from '@/utils/useChatRealtime';
+import { setActiveChatConversation, dispatchChatUnreadChanged } from '@/utils/chatActiveConversation';
 import { resolveOfflineProfile, saveProfileCache } from '@/utils/profileCache';
 
 function resolveDisplayName(profile: {
@@ -73,6 +75,23 @@ export default function ChatPanel({
       } catch { /* use cached name */ }
     })();
   }, [currentUserId]);
+
+  useEffect(() => {
+    setActiveChatConversation(conversation.conversationId);
+    void markConversationRead(conversation.conversationId).then(() => dispatchChatUnreadChanged());
+
+    return () => {
+      setActiveChatConversation(null);
+    };
+  }, [conversation.conversationId]);
+
+  useEffect(() => {
+    if (loading) return;
+    const t = setTimeout(() => {
+      void markConversationRead(conversation.conversationId).then(() => dispatchChatUnreadChanged());
+    }, 500);
+    return () => clearTimeout(t);
+  }, [loading, messages.length, conversation.conversationId]);
 
   const loadMessages = useCallback(async () => {
     setLoading(true);

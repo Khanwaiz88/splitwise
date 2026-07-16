@@ -10,6 +10,7 @@ import GroupSwitcher from '@/components/GroupSwitcher';
 import ThemeToggle from '@/components/ThemeToggle';
 import PendingInvitesBadge from '@/components/PendingInvitesBadge';
 import { usePendingInviteCount } from '@/utils/usePendingInviteCount';
+import { useChatUnread } from '@/utils/useChatUnread';
 import { avatarGradient } from '@/utils/avatarColor';
 
 const NAV_ITEMS = [
@@ -74,6 +75,8 @@ export default function DashboardNav({
   const isProfileActive = pathname === '/dashboard/profile';
   const grad = avatarGradient(userId);
   const pendingInviteCount = usePendingInviteCount();
+  const { total: chatUnreadTotal } = useChatUnread();
+  const alertCount = pendingInviteCount + chatUnreadTotal;
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
@@ -101,9 +104,9 @@ export default function DashboardNav({
             aria-label="Open menu"
           >
             <Menu size={20} />
-            {pendingInviteCount > 0 && (
+            {alertCount > 0 && (
               <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-rose-500 text-white text-[9px] font-extrabold border-2 border-[var(--nav-bg)]">
-                {pendingInviteCount > 9 ? '9+' : pendingInviteCount}
+                {alertCount > 9 ? '9+' : alertCount}
               </span>
             )}
           </button>
@@ -148,16 +151,49 @@ export default function DashboardNav({
 
             <nav className="flex-1 overflow-y-auto p-4 flex flex-col gap-1.5">
               <p className="text-[10px] font-bold text-violet-400/80 uppercase tracking-widest px-1 mb-1">More</p>
-              {MOBILE_DRAWER.map(({ href, label, icon, match }) => (
-                <NavLink
-                  key={href}
-                  href={href}
-                  label={label}
-                  icon={icon}
-                  active={match(pathname, action ?? '')}
-                  onClick={closeDrawer}
-                />
-              ))}
+              {MOBILE_DRAWER.map(({ href, label, icon, match }) => {
+                const active = match(pathname, action ?? '');
+                const isChat = href === '/dashboard/chat';
+                if (isChat) {
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={closeDrawer}
+                      className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                        active
+                          ? 'bg-gradient-to-r from-violet-500/25 to-fuchsia-500/20 text-white border border-violet-500/30 shadow-lg shadow-violet-500/10'
+                          : 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent'
+                      }`}
+                    >
+                      <span className="relative">
+                        <MessageSquare size={18} className={active ? 'text-violet-300' : ''} />
+                        {chatUnreadTotal > 0 && (
+                          <span className="absolute -top-2 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-cyan-500 text-white text-[9px] font-extrabold">
+                            {chatUnreadTotal > 9 ? '9+' : chatUnreadTotal}
+                          </span>
+                        )}
+                      </span>
+                      {label}
+                      {chatUnreadTotal > 0 && (
+                        <span className="ml-auto text-xs font-bold text-cyan-300 bg-cyan-500/15 px-2 py-0.5 rounded-full">
+                          {chatUnreadTotal} new
+                        </span>
+                      )}
+                    </Link>
+                  );
+                }
+                return (
+                  <NavLink
+                    key={href}
+                    href={href}
+                    label={label}
+                    icon={icon}
+                    active={active}
+                    onClick={closeDrawer}
+                  />
+                );
+              })}
             </nav>
 
             <div className="shrink-0 p-4 border-t border-[var(--border-subtle)] space-y-3">
@@ -201,9 +237,39 @@ export default function DashboardNav({
         </div>
 
         <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-4 flex flex-col gap-1.5 animate-fade-in-up delay-2">
-          {NAV_ITEMS.filter((item) => item.href !== '/dashboard/invites').map(({ href, label, icon, match }) => (
-            <NavLink key={href} href={href} label={label} icon={icon} active={match(pathname, action ?? '')} />
-          ))}
+          {NAV_ITEMS.filter((item) => item.href !== '/dashboard/invites').map(({ href, label, icon, match }) => {
+            const active = match(pathname, action ?? '');
+            const isChat = href === '/dashboard/chat';
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  active
+                    ? 'bg-gradient-to-r from-violet-500/25 to-fuchsia-500/20 text-white border border-violet-500/30 shadow-lg shadow-violet-500/10'
+                    : 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <span className="relative">
+                  {(() => {
+                    const Icon = icon;
+                    return <Icon size={18} className={active ? 'text-violet-300' : ''} />;
+                  })()}
+                  {isChat && chatUnreadTotal > 0 && (
+                    <span className="absolute -top-2 -right-2 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-cyan-500 text-white text-[9px] font-extrabold">
+                      {chatUnreadTotal > 9 ? '9+' : chatUnreadTotal}
+                    </span>
+                  )}
+                </span>
+                {label}
+                {isChat && chatUnreadTotal > 0 && (
+                  <span className="ml-auto text-xs font-bold text-cyan-300 bg-cyan-500/15 px-2 py-0.5 rounded-full">
+                    {chatUnreadTotal} new
+                  </span>
+                )}
+              </Link>
+            );
+          })}
           <PendingInvitesBadge />
         </nav>
 

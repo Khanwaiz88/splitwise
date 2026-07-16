@@ -15,6 +15,7 @@ import {
   type ConversationInfo,
   type DmContact,
 } from '@/utils/chatApi';
+import { useChatUnread } from '@/utils/useChatUnread';
 import { resolveOfflineProfile } from '@/utils/profileCache';
 import { createClient } from '@/utils/supabase/client';
 
@@ -57,6 +58,7 @@ export default function ChatPage() {
 
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentDisplayName, setCurrentDisplayName] = useState('You');
+  const { unreadForGroup, unreadForUser } = useChatUnread();
 
   useEffect(() => {
     const cached = resolveOfflineProfile();
@@ -216,6 +218,7 @@ export default function ChatPage() {
                 groups.map((g) => {
                   const active = selectedGroupId === g.id;
                   const grad = avatarGradient(g.id);
+                  const unread = unreadForGroup(g.id);
                   return (
                     <button
                       key={g.id}
@@ -227,12 +230,17 @@ export default function ChatPage() {
                           : 'hover:bg-white/5 border border-transparent'
                       }`}
                     >
-                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center shrink-0`}>
+                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center shrink-0 relative`}>
                         <span className="text-[10px] font-extrabold text-white">
                           {groupInitials(g.name)}
                         </span>
+                        {unread > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-cyan-500 text-white text-[9px] font-extrabold">
+                            {unread > 9 ? '9+' : unread}
+                          </span>
+                        )}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-white truncate">{g.name}</p>
                         <p className="text-[10px] text-white/40">{g.memberCount} members</p>
                       </div>
@@ -311,6 +319,7 @@ export default function ChatPage() {
                 contacts.map((c) => {
                   const active = selectedContactId === c.user_id;
                   const grad = avatarGradient(c.user_id);
+                  const unread = unreadForUser(c.user_id);
                   return (
                     <button
                       key={c.user_id}
@@ -322,12 +331,17 @@ export default function ChatPage() {
                           : 'hover:bg-white/5 border border-transparent'
                       }`}
                     >
-                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center shrink-0`}>
+                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center shrink-0 relative`}>
                         <span className="text-[10px] font-extrabold text-white">
                           {profileInitials(c.display_name)}
                         </span>
+                        {unread > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-cyan-500 text-white text-[9px] font-extrabold">
+                            {unread > 9 ? '9+' : unread}
+                          </span>
+                        )}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-white truncate">{c.display_name}</p>
                         <p className="text-[10px] text-white/40 truncate">{c.email}</p>
                       </div>

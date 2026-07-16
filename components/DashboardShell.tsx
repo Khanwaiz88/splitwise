@@ -7,6 +7,7 @@ import { createClient } from '@/utils/supabase/client';
 import { loadProfileCache, resolveOfflineProfile } from '@/utils/profileCache';
 import MeshBackground from '@/components/ui/MeshBackground';
 import DashboardNav from '@/components/DashboardNav';
+import ChatNotificationListener from '@/components/ChatNotificationListener';
 
 const OFFLINE_KEY = 'splitwise_offline_data_v2';
 
@@ -137,6 +138,7 @@ export default function DashboardShell({
   return (
     <div className="min-h-screen text-[var(--fg)] flex relative">
       <MeshBackground />
+      <ChatNotificationListener userId={user.id} />
       <Suspense fallback={null}>
         <DashboardNav
           userId={user.id}
