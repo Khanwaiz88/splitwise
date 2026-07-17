@@ -30,9 +30,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (local secrets stay untracked; empty .env files are committed for Vercel middleware)
 .env*
-!.env.example
+!.env
+!.env.production
 
 # PWA build artifacts (regenerated on `npm run build`)
 public/sw.js

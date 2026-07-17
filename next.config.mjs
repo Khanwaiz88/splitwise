@@ -30,6 +30,11 @@ const withPWA = withPWAInit({
 });
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  // Next.js 16 middleware on Vercel expects .env at runtime — include it in the trace.
+  outputFileTracingIncludes: {
+    "/*": [".env", ".env.production"],
+  },
+};
 
 export default withPWA(nextConfig);

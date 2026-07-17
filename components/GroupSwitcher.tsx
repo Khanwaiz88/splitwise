@@ -13,6 +13,7 @@ import { syncPendingGroups } from '@/utils/syncGroups';
 import ModalPortal from '@/components/ui/ModalPortal';
 import CurrencySelect from '@/components/CurrencySelect';
 import { ChevronDown, Plus, Check, X, Sparkles } from 'lucide-react';
+import { GROUP_DATA_CHANGED, type GroupDataChangedDetail } from '@/utils/groupDataEvents';
 import { type CurrencyCode, DEFAULT_CURRENCY } from '@/utils/currency';
 
 type Group = Pick<GroupResponse, 'id' | 'name'>;
@@ -105,6 +106,22 @@ export default function GroupSwitcher({ userId }: { userId: string }) {
     window.addEventListener('groupChanged', handler);
     return () => window.removeEventListener('groupChanged', handler);
   }, [fetchGroups, groups]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<GroupDataChangedDetail>).detail;
+      if (!detail) return;
+
+      const activeId = activeGroup?.id ?? localStorage.getItem(ACTIVE_GROUP_KEY);
+      if (detail.groupId && activeId && detail.groupId !== activeId) {
+        return;
+      }
+
+      fetchGroups(true);
+    };
+    window.addEventListener(GROUP_DATA_CHANGED, handler);
+    return () => window.removeEventListener(GROUP_DATA_CHANGED, handler);
+  }, [fetchGroups, activeGroup?.id]);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();

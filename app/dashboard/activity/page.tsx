@@ -6,6 +6,7 @@ import {
   Activity, WifiOff, RefreshCw, Clock, Receipt,
   UserPlus, Inbox, Sparkles, Banknote,
 } from 'lucide-react';
+import { GROUP_DATA_CHANGED, type GroupDataChangedDetail } from '@/utils/groupDataEvents';
 import PageHeader from '@/components/ui/PageHeader';
 
 const ACTIVE_GROUP_KEY = 'splitwise_active_group';
@@ -169,6 +170,22 @@ export default function ActivityPage() {
     window.addEventListener('groupChanged', handler);
     return () => window.removeEventListener('groupChanged', handler);
   }, [loadActivity]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<GroupDataChangedDetail>).detail;
+      if (!detail) return;
+
+      const activeGroupId = groupId ?? localStorage.getItem(ACTIVE_GROUP_KEY);
+      if (detail.groupId && activeGroupId && detail.groupId !== activeGroupId) {
+        return;
+      }
+
+      loadActivity(activeGroupId ?? undefined);
+    };
+    window.addEventListener(GROUP_DATA_CHANGED, handler);
+    return () => window.removeEventListener(GROUP_DATA_CHANGED, handler);
+  }, [loadActivity, groupId]);
 
   const filteredLogs = useMemo(() => {
     if (filter === 'all') return logs;

@@ -20,7 +20,11 @@ function loadEnvFile(name) {
     if (!t || t.startsWith('#')) continue;
     const i = t.indexOf('=');
     if (i === -1) continue;
-    out[t.slice(0, i).trim()] = t.slice(i + 1).trim();
+    let val = t.slice(i + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    out[t.slice(0, i).trim()] = val;
   }
   return out;
 }

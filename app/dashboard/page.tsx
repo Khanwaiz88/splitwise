@@ -24,6 +24,7 @@ import InviteMember from '@/components/InviteMember';
 import GroupMembersList from '@/components/GroupMembersList';
 import PageHeader from '@/components/ui/PageHeader';
 import WidgetCard from '@/components/ui/WidgetCard';
+import { GROUP_DATA_CHANGED, type GroupDataChangedDetail } from '@/utils/groupDataEvents';
 import {
   RefreshCw, WifiOff, TrendingUp, TrendingDown,
   CheckCircle2, Receipt, Users, Sparkles, Zap, Banknote,
@@ -255,6 +256,24 @@ function DashboardInner() {
     window.addEventListener('groupChanged', handler);
     return () => window.removeEventListener('groupChanged', handler);
   }, [loadData]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<GroupDataChangedDetail>).detail;
+      if (!detail) return;
+
+      const activeGroupId =
+        currentGroupId ?? localStorage.getItem(ACTIVE_GROUP_KEY);
+
+      if (detail.groupId && activeGroupId && detail.groupId !== activeGroupId) {
+        return;
+      }
+
+      loadData(activeGroupId ?? undefined, true);
+    };
+    window.addEventListener(GROUP_DATA_CHANGED, handler);
+    return () => window.removeEventListener(GROUP_DATA_CHANGED, handler);
+  }, [loadData, currentGroupId]);
 
   const balances = useMemo(
     () => (members.length > 0 ? calculateBalances(members, expenses, settlements) : []),

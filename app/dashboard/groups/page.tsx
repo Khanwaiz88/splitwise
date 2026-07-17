@@ -23,6 +23,7 @@ import InviteMember from '@/components/InviteMember';
 import CurrencySelect from '@/components/CurrencySelect';
 import { removeMemberFromGroup } from '@/utils/membersApi';
 import type { Member } from '@/utils/splitMath';
+import { GROUP_DATA_CHANGED, type GroupDataChangedDetail } from '@/utils/groupDataEvents';
 import { avatarGradient } from '@/utils/avatarColor';
 import { type CurrencyCode, DEFAULT_CURRENCY, normalizeCurrency } from '@/utils/currency';
 
@@ -93,6 +94,19 @@ export default function GroupsPage() {
       window.removeEventListener('offline', onOffline);
     };
   }, [loadGroups]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<GroupDataChangedDetail>).detail;
+      if (!detail) return;
+      if (detail.groupId && activeGroupId && detail.groupId !== activeGroupId) {
+        return;
+      }
+      loadGroups(true);
+    };
+    window.addEventListener(GROUP_DATA_CHANGED, handler);
+    return () => window.removeEventListener(GROUP_DATA_CHANGED, handler);
+  }, [loadGroups, activeGroupId]);
 
   const selectGroup = (group: GroupResponse) => {
     setActiveGroupId(group.id);

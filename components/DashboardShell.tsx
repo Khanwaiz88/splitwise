@@ -8,6 +8,7 @@ import { loadProfileCache, resolveOfflineProfile } from '@/utils/profileCache';
 import MeshBackground from '@/components/ui/MeshBackground';
 import DashboardNav from '@/components/DashboardNav';
 import ChatNotificationListener from '@/components/ChatNotificationListener';
+import GroupDataListener from '@/components/GroupDataListener';
 import PresenceHeartbeat from '@/components/PresenceHeartbeat';
 
 const OFFLINE_KEY = 'splitwise_offline_data_v2';
@@ -141,6 +142,7 @@ export default function DashboardShell({
     <div className="min-h-screen text-[var(--fg)] flex relative">
       <MeshBackground />
       <ChatNotificationListener userId={user.id} />
+      <GroupDataListener userId={user.id} />
       <PresenceHeartbeat userId={user.id} />
       <Suspense fallback={null}>
         <DashboardNav
