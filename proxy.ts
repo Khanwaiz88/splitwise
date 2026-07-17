@@ -14,8 +14,9 @@ export const config = {
      * - favicon.ico (favicon file)
      * - manifest.json (PWA manifest file)
      * - sw.js, workbox-*.js (PWA service worker files)
+     * - auth/callback (OAuth code exchange — must not run session refresh)
      * - All image/font static assets
      */
-    '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|workbox-.*\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|sw\\.js|workbox-.*\\.js|auth/callback|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff|woff2|ttf)$).*)',
   ],
 }

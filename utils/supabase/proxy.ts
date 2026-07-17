@@ -11,64 +11,60 @@ function safeRedirectPath(raw: string | null): string {
   return '/dashboard'
 }
 
+/** Routes where we must not refresh auth — OAuth callback exchanges its own code */
+function skipSessionRefresh(pathname: string): boolean {
+  return (
+    pathname.startsWith('/auth/callback') ||
+    pathname.startsWith('/auth/signout')
+  )
+}
+
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  let response = NextResponse.next({ request })
+
+  if (skipSessionRefresh(request.nextUrl.pathname)) {
+    return response
+  }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('Supabase environment variables NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY are missing in updateSession proxy!')
+    console.error(
+      '[proxy] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    )
     return response
   }
 
   try {
-    const supabase = createServerClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) => {
-              request.cookies.set(name, value)
-            })
-            response = NextResponse.next({
-              request: {
-                headers: request.headers,
-              },
-            })
-            cookiesToSet.forEach(({ name, value, options }) => {
-              response.cookies.set(name, value, options)
-            })
-          },
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
         },
-      }
-    )
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value)
+          })
+          response = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    })
 
-    // Refresh session cookies when present — do NOT redirect dashboard routes here.
-    // Client-side shell validates auth; server redirect caused refresh → login loops
-    // when the browser session lived in client storage before cookie sync.
     const { data: { user } } = await supabase.auth.getUser()
-
-    const url = request.nextUrl.clone()
-    const pathname = url.pathname
+    const pathname = request.nextUrl.pathname
 
     if (user && (pathname === '/login' || pathname === '/')) {
-      const destination = safeRedirectPath(url.searchParams.get('next'))
-      const destUrl = new URL(destination, request.url)
-      url.pathname = destUrl.pathname
-      url.search = destUrl.search
-      return NextResponse.redirect(url)
+      const destination = safeRedirectPath(
+        request.nextUrl.searchParams.get('next'),
+      )
+      return NextResponse.redirect(new URL(destination, request.url))
     }
   } catch (err) {
-    console.error('Exception occurred in updateSession proxy:', err)
+    console.error('[proxy] updateSession failed:', err)
   }
 
   return response
