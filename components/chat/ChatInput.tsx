@@ -35,9 +35,9 @@ export default function ChatInput({
   return (
     <form
       onSubmit={handleSubmit}
-      className="shrink-0 p-3 border-t border-[var(--border-subtle)] bg-[var(--nav-bg)]/95 backdrop-blur-md chat-input-bar"
+      className="shrink-0 px-3 py-2.5 border-t border-white/[0.06] bg-[var(--nav-bg)]/90 backdrop-blur-xl chat-input-bar"
     >
-      <div className="flex gap-2 items-end">
+      <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-1.5 focus-within:border-violet-500/35 focus-within:ring-1 focus-within:ring-violet-500/15 transition-all">
         <textarea
           value={text}
           onChange={(e) => {
@@ -46,10 +46,10 @@ export default function ChatInput({
             else onStopTyping();
           }}
           onBlur={onStopTyping}
-          placeholder="Type a message…"
+          placeholder="Write a message…"
           rows={1}
           disabled={disabled || sending}
-          className="input-field flex-1 min-h-[44px] max-h-32 resize-none py-3"
+          className="flex-1 min-h-[40px] max-h-32 resize-none py-2 bg-transparent border-0 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-0"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -60,10 +60,10 @@ export default function ChatInput({
         <button
           type="submit"
           disabled={disabled || sending || !text.trim()}
-          className="shrink-0 w-11 h-11 rounded-xl btn-gradient flex items-center justify-center disabled:opacity-50"
+          className="shrink-0 w-9 h-9 rounded-xl btn-gradient flex items-center justify-center disabled:opacity-40 disabled:grayscale transition-all"
           aria-label="Send message"
         >
-          {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+          {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
         </button>
       </div>
     </form>

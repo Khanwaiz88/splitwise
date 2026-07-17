@@ -19,7 +19,7 @@ export default function TypingIndicator({ users }: { users: TypingUser[] }) {
   const shown = users.slice(0, 3);
 
   return (
-    <div className="shrink-0 px-4 py-2.5 flex items-center gap-2.5 text-sm text-violet-200 font-semibold bg-violet-500/10 border-t border-violet-500/20 animate-fade-in-up">
+    <div className="shrink-0 px-4 py-2 flex items-center gap-2.5 text-xs text-violet-200/90 font-medium bg-violet-500/[0.07] border-t border-violet-500/15 animate-fade-in-up">
       <div className="flex -space-x-2 shrink-0">
         {shown.map((u) => (
           <ChatAvatar
