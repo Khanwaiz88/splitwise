@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { MessageSquare, Users, User, AlertCircle, ChevronLeft } from 'lucide-react';
+import { MessageSquare, Users, User, AlertCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import PageHeader from '@/components/ui/PageHeader';
 import WidgetCard from '@/components/ui/WidgetCard';
@@ -266,20 +266,7 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedGroupId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0 max-md:gap-1'}`}>
-            {selectedGroupId && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedGroupId(null);
-                  setGroupConversation(null);
-                  setGroupError('');
-                }}
-                className="md:hidden chat-back-btn shrink-0 flex items-center gap-1.5 text-xs font-bold text-violet-300 px-1 py-0.5"
-              >
-                <ChevronLeft size={18} /> Back
-              </button>
-            )}
+          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedGroupId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0 max-md:gap-0'}`}>
             {!selectedGroupId || loadingGroupChat ? (
               <WidgetCard variant="violet" hover={false} className="flex-1 flex items-center justify-center text-center py-12">
                 <MessageSquare size={40} className="text-violet-400/40 mx-auto mb-3" />
@@ -304,6 +291,11 @@ export default function ChatPage() {
                   conversation={{ ...groupConversation, title: selectedGroup?.name ?? groupConversation.title }}
                   currentUserId={currentUserId}
                   currentDisplayName={currentDisplayName}
+                  onBack={() => {
+                    setSelectedGroupId(null);
+                    setGroupConversation(null);
+                    setGroupError('');
+                  }}
                 />
               </div>
             ) : null}
@@ -374,19 +366,7 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedContactId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0 max-md:gap-1'}`}>
-            {selectedContactId && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedContactId(null);
-                  setDmConversation(null);
-                }}
-                className="md:hidden chat-back-btn shrink-0 flex items-center gap-1.5 text-xs font-bold text-violet-300 px-1 py-0.5"
-              >
-                <ChevronLeft size={18} /> Back
-              </button>
-            )}
+          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedContactId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0 max-md:gap-0'}`}>
             {!selectedContactId || loadingDm ? (
               <WidgetCard variant="violet" hover={false} className="flex-1 flex items-center justify-center text-center py-12">
                 <MessageSquare size={40} className="text-violet-400/40 mx-auto mb-3" />
@@ -407,6 +387,10 @@ export default function ChatPage() {
                   conversation={dmConversation}
                   currentUserId={currentUserId}
                   currentDisplayName={currentDisplayName}
+                  onBack={() => {
+                    setSelectedContactId(null);
+                    setDmConversation(null);
+                  }}
                 />
               </div>
             ) : null}

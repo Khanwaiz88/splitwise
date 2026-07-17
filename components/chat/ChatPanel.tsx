@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronLeft } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import ChatThread from '@/components/chat/ChatThread';
 import ChatInput from '@/components/chat/ChatInput';
@@ -35,10 +35,12 @@ export default function ChatPanel({
   conversation,
   currentUserId,
   currentDisplayName,
+  onBack,
 }: {
   conversation: ConversationInfo;
   currentUserId: string;
   currentDisplayName: string;
+  onBack?: () => void;
 }) {
   const [loading, setLoading] = useState(true);
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
@@ -279,8 +281,18 @@ export default function ChatPanel({
 
   return (
     <div className="chat-panel relative flex flex-col h-full min-h-0 max-h-full widget widget-violet widget-flush overflow-hidden">
-      <div className="chat-panel-header shrink-0 px-4 py-3 border-b border-white/[0.06]">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="chat-panel-header shrink-0 px-3 py-2 md:px-4 md:py-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="md:hidden shrink-0 p-1 -ml-0.5 rounded-lg text-violet-300 hover:bg-white/5 transition-colors"
+              aria-label="Back"
+            >
+              <ChevronLeft size={22} />
+            </button>
+          )}
           {conversation.type === 'dm' && conversation.otherUserId ? (
             <div className="relative shrink-0">
               <ChatAvatar
