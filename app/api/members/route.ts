@@ -1,7 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { createGroupInvite } from '@/utils/server/groupInvite';
-import { sendAddedToGroupEmail } from '@/utils/sendInviteEmail';
 
 const NAME_PATTERN = /^[A-Za-z][A-Za-z0-9 ]{1,29}$/;
 
@@ -108,7 +107,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // ── Registered user by email ────────────────────────────────────────────
+    // ── Email invite (registered or new user — must Accept/Decline in app) ──
     if (!email) {
       return NextResponse.json({ error: 'email or displayName is required' }, { status: 400 });
     }
@@ -121,107 +120,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'You cannot add yourself' }, { status: 400 });
     }
 
-    const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .select('id, email, display_name')
-      .ilike('email', email)
-      .maybeSingle();
-
-    if (profileErr) {
-      return NextResponse.json({ error: profileErr.message }, { status: 500 });
-    }
-
-    if (!profile) {
-      const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-      try {
-        const invite = await createGroupInvite(supabase, {
-          groupId,
-          email,
-          inviterId: user.id,
-          origin,
-          sendEmail: true,
-        });
-
-        return NextResponse.json({
-          invited: true,
-          email,
-          joinUrl: invite.joinUrl,
-          emailSent: invite.emailSent,
-          emailSkipped: invite.emailSkipped,
-          emailError: invite.emailError,
-          hasAccount: false,
-        });
-      } catch (err) {
-        if (err instanceof Error && err.message === 'ALREADY_MEMBER') {
-          return NextResponse.json(
-            { error: 'This person is already in the group.' },
-            { status: 409 },
-          );
-        }
-        throw err;
-      }
-    }
-
-    const { data: alreadyMember } = await supabase
-      .from('group_members')
-      .select('user_id')
-      .eq('group_id', groupId)
-      .eq('user_id', profile.id)
-      .maybeSingle();
-
-    if (alreadyMember) {
-      return NextResponse.json(
-        { error: 'This person is already in the group.', alreadyMember: true, userId: profile.id },
-        { status: 409 },
-      );
-    }
-
-    const { error: insertErr } = await supabase
-      .from('group_members')
-      .insert({ group_id: groupId, user_id: profile.id });
-
-    if (insertErr) {
-      return NextResponse.json({ error: insertErr.message }, { status: 500 });
-    }
-
     const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
 
-    const [{ data: groupRow }, { data: inviterProfile }] = await Promise.all([
-      supabase.from('groups').select('name').eq('id', groupId).single(),
-      supabase.from('profiles').select('display_name, email').eq('id', user.id).single(),
-    ]);
+    try {
+      const invite = await createGroupInvite(supabase, {
+        groupId,
+        email,
+        inviterId: user.id,
+        origin,
+        sendEmail: true,
+      });
 
-    const inviterName =
-      inviterProfile?.display_name?.trim() ||
-      inviterProfile?.email?.split('@')[0] ||
-      'A group member';
-
-    const emailResult = await sendAddedToGroupEmail({
-      to: profile.email,
-      groupName: groupRow?.name ?? 'your group',
-      inviterName,
-      groupUrl: `${origin}/dashboard/groups`,
-    });
-
-    supabase
-      .from('activity_log')
-      .insert({
-        group_id: groupId,
-        user_id: user.id,
-        description: `added ${profile.display_name ?? profile.email} to the group`,
-      })
-      .then(({ error: logErr }) => { if (logErr) console.warn('[activity_log]', logErr.message); });
-
-    return NextResponse.json({
-      id: profile.id,
-      email: profile.email,
-      display_name: profile.display_name ?? profile.email,
-      is_guest: false,
-      added: true,
-      emailSent: emailResult.sent,
-      emailSkipped: emailResult.skipped,
-      emailError: emailResult.error,
-    });
+      return NextResponse.json({
+        invited: true,
+        email,
+        joinUrl: invite.joinUrl,
+        emailSent: invite.emailSent,
+        emailSkipped: invite.emailSkipped,
+        emailError: invite.emailError,
+        hasAccount: invite.hasAccount,
+        resent: invite.resent,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.message === 'ALREADY_MEMBER') {
+        return NextResponse.json(
+          { error: 'This person is already in the group.' },
+          { status: 409 },
+        );
+      }
+      throw err;
+    }
   } catch (err) {
     console.error('[POST /api/members]', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

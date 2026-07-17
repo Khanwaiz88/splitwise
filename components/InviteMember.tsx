@@ -66,37 +66,23 @@ export default function InviteMember({
     try {
       if (isEmail) {
         const result = await addMemberByEmail(groupId, trimmed.toLowerCase());
-        if (result.invited) {
-          if (result.emailSent) {
-            toast.success('Invite email sent! They can join after sign up.');
-          } else if (result.emailSkipped) {
-            toast.error('Invite saved but email was not sent — server email not configured.');
-          } else {
-            toast.error(result.emailError ?? 'Invite saved but email failed to send.');
-          }
-          setInput('');
-          return;
-        }
-
-        if (existingMemberIds.includes(result.id)) {
-          toast.error('This person is already in the group.');
-          return;
-        }
-
-        onMemberAdded({
-          id: result.id,
-          display_name: result.display_name,
-          email: result.email,
-          is_guest: false,
-        });
         if (result.emailSent) {
-          toast.success(`${result.display_name} added — notification email sent!`);
+          toast.success(
+            result.hasAccount
+              ? 'Invite sent! They must Accept or Decline in the app.'
+              : 'Invite email sent! They can sign up and accept the invite.',
+          );
         } else if (result.emailSkipped) {
-          toast.success(`${result.display_name} added to the group (email not configured).`);
+          toast.success(
+            result.hasAccount
+              ? 'Invite saved in app — email not configured on server.'
+              : 'Invite saved — email not configured on server.',
+          );
         } else {
-          toast.success(`${result.display_name} added to the group.`);
-          if (result.emailError) toast.error(`Email failed: ${result.emailError}`);
+          toast.error(result.emailError ?? 'Invite saved but email failed to send.');
         }
+        setInput('');
+        return;
       } else {
         const member = await addGuestMemberByName(groupId, trimmed);
         onMemberAdded({
@@ -118,7 +104,7 @@ export default function InviteMember({
   let hint = 'Type a name for guest, or full email for registered user / invite';
   let inputIcon = UserRound;
   if (isEmail) {
-    hint = 'Registered user is added instantly and gets an email · unknown email gets invite';
+    hint = 'Sends invite — they must Accept or Decline in the app before joining';
     inputIcon = Mail;
   } else if (isName) {
     hint = nameTaken ? 'This name is already in the group' : 'Will be added as guest (no login required)';
