@@ -2,10 +2,13 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 function safeRedirectPath(raw: string | null): string {
-  if (!raw || !raw.startsWith('/dashboard') || raw.startsWith('//')) {
+  if (!raw || raw.startsWith('//')) {
     return '/dashboard'
   }
-  return raw
+  if (raw.startsWith('/dashboard') || raw.startsWith('/join/')) {
+    return raw
+  }
+  return '/dashboard'
 }
 
 export async function updateSession(request: NextRequest) {
