@@ -1,6 +1,7 @@
 'use client';
 
 import type { TypingUser } from '@/utils/useChatRealtime';
+import ChatAvatar from '@/components/chat/ChatAvatar';
 
 function typingLabel(users: TypingUser[]): string {
   if (users.length === 0) return '';
@@ -15,15 +16,27 @@ export default function TypingIndicator({ users }: { users: TypingUser[] }) {
   if (users.length === 0) return null;
 
   const label = typingLabel(users);
+  const shown = users.slice(0, 3);
 
   return (
-    <div className="shrink-0 px-4 py-2 flex items-center gap-2.5 text-sm text-violet-200 font-semibold bg-violet-500/10 border-t border-violet-500/20 animate-fade-in-up">
+    <div className="shrink-0 px-4 py-2.5 flex items-center gap-2.5 text-sm text-violet-200 font-semibold bg-violet-500/10 border-t border-violet-500/20 animate-fade-in-up">
+      <div className="flex -space-x-2 shrink-0">
+        {shown.map((u) => (
+          <ChatAvatar
+            key={u.userId}
+            userId={u.userId}
+            name={u.displayName}
+            size="sm"
+            className="mt-0 ring-2 ring-[var(--bg-elevated)]"
+          />
+        ))}
+      </div>
       <span className="flex gap-1 shrink-0">
-        <span className="w-2 h-2 rounded-full bg-violet-400 animate-bounce [animation-delay:0ms]" />
-        <span className="w-2 h-2 rounded-full bg-violet-400 animate-bounce [animation-delay:150ms]" />
-        <span className="w-2 h-2 rounded-full bg-violet-400 animate-bounce [animation-delay:300ms]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:0ms]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:150ms]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:300ms]" />
       </span>
-      <span className="truncate">{label}…</span>
+      <span className="truncate text-xs">{label}…</span>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import ChatThread from '@/components/chat/ChatThread';
 import ChatInput from '@/components/chat/ChatInput';
 import TypingIndicator, { typingStatusText } from '@/components/chat/TypingIndicator';
 import { PresenceDot, PresenceStatusText } from '@/components/chat/PresenceIndicator';
+import ChatAvatar from '@/components/chat/ChatAvatar';
 import {
   fetchChatMessages,
   sendChatMessage,
@@ -182,22 +183,36 @@ export default function ChatPanel({
   return (
     <div className="flex flex-col h-full min-h-0 max-h-full widget widget-violet widget-flush overflow-hidden">
       <div className="shrink-0 px-4 py-3 border-b border-white/10">
-        <div className="flex items-center gap-2 min-w-0">
-          {conversation.type === 'dm' && (
-            <PresenceDot online={dmPresence?.isOnline ?? false} />
-          )}
-          {conversation.type === 'group' && groupOnline > 0 && (
-            <PresenceDot online />
-          )}
-          <h2 className="text-sm font-extrabold text-white truncate flex-1">{conversation.title}</h2>
+        <div className="flex items-center gap-3 min-w-0">
+          {conversation.type === 'dm' && conversation.otherUserId ? (
+            <div className="relative shrink-0">
+              <ChatAvatar
+                userId={conversation.otherUserId}
+                name={conversation.title}
+                className="mt-0"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5">
+                <PresenceDot online={dmPresence?.isOnline ?? false} size="sm" />
+              </span>
+            </div>
+          ) : conversation.groupId ? (
+            <ChatAvatar
+              userId={conversation.groupId}
+              name={conversation.title}
+              className="mt-0"
+            />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-extrabold text-white truncate">{conversation.title}</h2>
+            <p
+              className={`text-[11px] font-semibold mt-0.5 truncate transition-colors ${
+                typingText ? 'text-violet-300' : 'text-white/40'
+              }`}
+            >
+              {subtitle}
+            </p>
+          </div>
         </div>
-        <p
-          className={`text-[11px] font-semibold mt-0.5 truncate transition-colors ${
-            typingText ? 'text-violet-300' : 'text-white/40'
-          }`}
-        >
-          {subtitle}
-        </p>
       </div>
 
       <ChatThread messages={messages} currentUserId={currentUserId} loading={loading} />
