@@ -266,7 +266,7 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedGroupId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0'}`}>
+          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedGroupId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0 max-md:gap-1'}`}>
             {selectedGroupId && (
               <button
                 type="button"
@@ -275,9 +275,9 @@ export default function ChatPage() {
                   setGroupConversation(null);
                   setGroupError('');
                 }}
-                className="md:hidden shrink-0 flex items-center gap-2 text-sm font-bold text-violet-300 px-1 py-1"
+                className="md:hidden chat-back-btn shrink-0 flex items-center gap-1.5 text-xs font-bold text-violet-300 px-1 py-0.5"
               >
-                <ChevronLeft size={20} /> Back to groups
+                <ChevronLeft size={18} /> Back
               </button>
             )}
             {!selectedGroupId || loadingGroupChat ? (
@@ -374,7 +374,7 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedContactId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0'}`}>
+          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedContactId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0 max-md:gap-1'}`}>
             {selectedContactId && (
               <button
                 type="button"
@@ -382,9 +382,9 @@ export default function ChatPage() {
                   setSelectedContactId(null);
                   setDmConversation(null);
                 }}
-                className="md:hidden shrink-0 flex items-center gap-2 text-sm font-bold text-violet-300 px-1 py-1"
+                className="md:hidden chat-back-btn shrink-0 flex items-center gap-1.5 text-xs font-bold text-violet-300 px-1 py-0.5"
               >
-                <ChevronLeft size={20} /> Back to contacts
+                <ChevronLeft size={18} /> Back
               </button>
             )}
             {!selectedContactId || loadingDm ? (
