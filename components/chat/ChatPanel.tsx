@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'react-hot-toast';
 import ChatThread from '@/components/chat/ChatThread';
 import ChatInput from '@/components/chat/ChatInput';
@@ -45,10 +45,13 @@ export default function ChatPanel({
   const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const presenceIds =
-    conversation.type === 'dm' && conversation.otherUserId
-      ? [conversation.otherUserId]
-      : groupMemberIds.filter((id) => id !== currentUserId);
+  const presenceIds = useMemo(
+    () =>
+      conversation.type === 'dm' && conversation.otherUserId
+        ? [conversation.otherUserId]
+        : groupMemberIds.filter((id) => id !== currentUserId),
+    [conversation.type, conversation.otherUserId, groupMemberIds, currentUserId],
+  );
 
   const { get: getPresence, onlineCount } = usePresence(presenceIds);
 
@@ -164,6 +167,14 @@ export default function ChatPanel({
     ? onlineCount(groupMemberIds.filter((id) => id !== currentUserId))
     : 0;
 
+  if (!conversation.conversationId || !currentUserId) {
+    return (
+      <div className="flex flex-col h-full min-h-0 widget widget-violet widget-flush items-center justify-center p-6">
+        <p className="text-sm text-white/50">Loading chat…</p>
+      </div>
+    );
+  }
+
   let subtitle: ReactNode;
   if (typingText) {
     subtitle = typingText;
@@ -204,13 +215,13 @@ export default function ChatPanel({
           ) : null}
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-extrabold text-white truncate">{conversation.title}</h2>
-            <p
+            <div
               className={`text-[11px] font-semibold mt-0.5 truncate transition-colors ${
                 typingText ? 'text-violet-300' : 'text-white/40'
               }`}
             >
               {subtitle}
-            </p>
+            </div>
           </div>
         </div>
       </div>

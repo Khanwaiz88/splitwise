@@ -9,15 +9,16 @@ import {
   type PresenceEntry,
 } from '@/utils/presenceApi';
 
+function stableIdsKey(userIds: string[]): string {
+  return [...new Set(userIds.filter(Boolean))].sort().join(',');
+}
+
 export function usePresence(userIds: string[]) {
   const [map, setMap] = useState<Record<string, PresenceEntry>>({});
-  const key = useMemo(
-    () => [...new Set(userIds.filter(Boolean))].sort().join(','),
-    [userIds],
-  );
+  const idsKey = useMemo(() => stableIdsKey(userIds), [userIds.join('|')]);
 
   const load = useCallback(async () => {
-    const ids = key ? key.split(',') : [];
+    const ids = idsKey ? idsKey.split(',') : [];
     if (ids.length === 0) {
       setMap({});
       return;
@@ -30,9 +31,9 @@ export function usePresence(userIds: string[]) {
       }
       setMap(next);
     } catch {
-      /* migration may not be applied */
+      /* presence table may not exist yet */
     }
-  }, [key]);
+  }, [idsKey]);
 
   useEffect(() => {
     void load();
@@ -41,12 +42,12 @@ export function usePresence(userIds: string[]) {
   }, [load]);
 
   useEffect(() => {
-    const ids = key ? key.split(',') : [];
+    const ids = idsKey ? idsKey.split(',') : [];
     if (ids.length === 0) return;
 
     const supabase = createClient();
     const channel = supabase
-      .channel('presence-updates')
+      .channel(`presence:${idsKey}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'user_presence' },
@@ -64,9 +65,8 @@ export function usePresence(userIds: string[]) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [key]);
+  }, [idsKey]);
 
-  // Re-evaluate online status as time passes without new heartbeats
   useEffect(() => {
     const tick = setInterval(() => {
       setMap((prev) => {
