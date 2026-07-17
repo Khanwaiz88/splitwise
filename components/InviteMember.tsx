@@ -89,7 +89,7 @@ export default function InviteMember({
           email: result.email,
           is_guest: false,
         });
-        toast.success(`${result.display_name} added to the group!`);
+        toast.success(`${result.display_name} added instantly — they did not need the share link.`);
       } else {
         const member = await addGuestMemberByName(groupId, trimmed);
         onMemberAdded({

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
@@ -17,6 +17,7 @@ export default function JoinGroupPage({ params }: { params: Promise<{ code: stri
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState('');
   const [loggedIn, setLoggedIn] = useState(false);
+  const joinedRef = useRef(false);
 
   useEffect(() => { params.then(({ code: c }) => setCode(c)); }, [params]);
 
@@ -36,7 +37,8 @@ export default function JoinGroupPage({ params }: { params: Promise<{ code: stri
       .finally(() => setLoading(false));
   }, [code, supabase]);
 
-  const handleJoin = async () => {
+  const handleJoin = async (auto = false) => {
+    if (joinedRef.current) return;
     setJoining(true);
     try {
       const res = await fetch('/api/groups/join', {
@@ -48,6 +50,7 @@ export default function JoinGroupPage({ params }: { params: Promise<{ code: stri
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? 'Failed to join group');
 
+      joinedRef.current = true;
       toast.success(
         data.alreadyMember
           ? `You're already in ${data.groupName}`
@@ -55,13 +58,21 @@ export default function JoinGroupPage({ params }: { params: Promise<{ code: stri
       );
       router.replace('/dashboard/groups');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to join group');
+      if (!auto) {
+        toast.error(err instanceof Error ? err.message : 'Failed to join group');
+      }
     } finally {
       setJoining(false);
     }
   };
 
-  if (loading) {
+  // After sign-in from this link, join exactly this one group automatically
+  useEffect(() => {
+    if (!loggedIn || !code || loading || !groupName || joinedRef.current) return;
+    void handleJoin(true);
+  }, [loggedIn, code, loading, groupName]);
+
+  if (loading || (loggedIn && joining)) {
     return (
       <div className="auth-shell relative">
         <MeshBackground />
@@ -102,7 +113,7 @@ export default function JoinGroupPage({ params }: { params: Promise<{ code: stri
         {loggedIn ? (
           <button
             type="button"
-            onClick={handleJoin}
+            onClick={() => void handleJoin(false)}
             disabled={joining}
             className="w-full py-3.5 btn-gradient rounded-xl font-extrabold flex items-center justify-center gap-2"
           >

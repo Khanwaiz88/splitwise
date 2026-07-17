@@ -51,8 +51,15 @@ function LoginForm() {
 
   const afterAuth = async () => {
     const nextPath = searchParams.get('next');
+
+    // Group share link — join that group first, don't send to unrelated invites
+    if (nextPath?.startsWith('/join/group/') && !nextPath.startsWith('//')) {
+      window.location.assign(nextPath);
+      return;
+    }
+
     const defaultDest =
-      nextPath && nextPath.startsWith('/dashboard') && !nextPath.startsWith('//')
+      nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//')
         ? nextPath
         : '/dashboard';
 
