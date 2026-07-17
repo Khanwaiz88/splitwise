@@ -64,6 +64,12 @@ export default function ChatPage() {
   const { unreadForGroup, unreadForUser } = useChatUnread();
   const contactIds = contacts.map((c) => c.user_id);
   const { get: getPresence } = usePresence(contactIds);
+  const chatConversationOpen = Boolean(selectedGroupId || selectedContactId);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('chat-conversation-open', chatConversationOpen);
+    return () => document.documentElement.classList.remove('chat-conversation-open');
+  }, [chatConversationOpen]);
 
   useEffect(() => {
     const cached = resolveOfflineProfile();
@@ -180,10 +186,14 @@ export default function ChatPage() {
   );
 
   return (
-    <div className="page-stack">
-      <PageHeader eyebrow="Messages" title="Chat" icon={MessageSquare} />
+    <div className="page-stack chat-page-stack">
+      <div className={chatConversationOpen ? 'max-md:hidden' : undefined}>
+        <PageHeader eyebrow="Messages" title="Chat" icon={MessageSquare} />
+      </div>
 
-      <div className="flex gap-2 p-1 rounded-xl glass-light border border-white/10">
+      <div
+        className={`flex gap-2 p-1 rounded-xl glass-light border border-white/10${chatConversationOpen ? ' max-md:hidden' : ''}`}
+      >
         <button
           type="button"
           onClick={() => setTab('group')}
@@ -205,7 +215,7 @@ export default function ChatPage() {
       </div>
 
       {tab === 'group' && (
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(260px,320px)_1fr] gap-4 md:min-h-[480px] md:h-[calc(100dvh-12rem)] md:max-h-[840px]">
+        <div className="chat-layout grid grid-cols-1 md:grid-cols-[minmax(260px,320px)_1fr] gap-4 md:min-h-[480px] md:h-[calc(100dvh-12rem)] md:max-h-[840px]">
           <div className={`widget widget-violet widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0 ${selectedGroupId ? 'max-md:hidden' : ''}`}>
             <div className="shrink-0 px-4 py-3 border-b border-white/10">
               <p className="text-xs font-extrabold text-white/50 uppercase tracking-wider">Your Groups</p>
@@ -256,7 +266,7 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className={`min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedGroupId ? 'max-md:hidden' : 'max-md:flex-1'}`}>
+          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedGroupId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0'}`}>
             {selectedGroupId && (
               <button
                 type="button"
@@ -265,7 +275,7 @@ export default function ChatPage() {
                   setGroupConversation(null);
                   setGroupError('');
                 }}
-                className="md:hidden flex items-center gap-2 text-sm font-bold text-violet-300 px-1 py-1"
+                className="md:hidden shrink-0 flex items-center gap-2 text-sm font-bold text-violet-300 px-1 py-1"
               >
                 <ChevronLeft size={20} /> Back to groups
               </button>
@@ -302,7 +312,7 @@ export default function ChatPage() {
       )}
 
       {tab === 'dm' && (
-        <div className="grid grid-cols-1 md:grid-cols-[minmax(260px,320px)_1fr] gap-4 md:min-h-[480px] md:h-[calc(100dvh-12rem)] md:max-h-[840px]">
+        <div className="chat-layout grid grid-cols-1 md:grid-cols-[minmax(260px,320px)_1fr] gap-4 md:min-h-[480px] md:h-[calc(100dvh-12rem)] md:max-h-[840px]">
           <div className={`widget widget-fuchsia widget-flush overflow-hidden flex flex-col min-h-[180px] md:min-h-0 ${selectedContactId ? 'max-md:hidden' : ''}`}>
             <div className="shrink-0 px-4 py-3 border-b border-white/10">
               <p className="text-xs font-extrabold text-white/50 uppercase tracking-wider">Direct Messages</p>
@@ -364,7 +374,7 @@ export default function ChatPage() {
             </div>
           </div>
 
-          <div className={`min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedContactId ? 'max-md:hidden' : 'max-md:flex-1'}`}>
+          <div className={`chat-conversation-column min-h-[320px] md:min-h-0 flex flex-col gap-3 ${!selectedContactId ? 'max-md:hidden' : 'max-md:flex-1 max-md:min-h-0'}`}>
             {selectedContactId && (
               <button
                 type="button"
@@ -372,7 +382,7 @@ export default function ChatPage() {
                   setSelectedContactId(null);
                   setDmConversation(null);
                 }}
-                className="md:hidden flex items-center gap-2 text-sm font-bold text-violet-300 px-1 py-1"
+                className="md:hidden shrink-0 flex items-center gap-2 text-sm font-bold text-violet-300 px-1 py-1"
               >
                 <ChevronLeft size={20} /> Back to contacts
               </button>

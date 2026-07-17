@@ -1,20 +1,23 @@
 'use client';
 
+import { forwardRef } from 'react';
 import { formatChatTime, type ChatMessage } from '@/utils/chatApi';
 import ChatAvatar from '@/components/chat/ChatAvatar';
 
-export default function ChatThread({
-  messages,
-  currentUserId,
-  loading,
-}: {
-  messages: ChatMessage[];
-  currentUserId: string;
-  loading?: boolean;
-}) {
+const ChatThread = forwardRef<
+  HTMLDivElement,
+  {
+    messages: ChatMessage[];
+    currentUserId: string;
+    loading?: boolean;
+  }
+>(function ChatThread({ messages, currentUserId, loading }, ref) {
   if (loading) {
     return (
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-3 p-4">
+      <div
+        ref={ref}
+        className="chat-thread-scroll flex-1 min-h-0 overflow-y-auto space-y-3 p-4"
+      >
         {[1, 2, 3].map((i) => (
           <div key={i} className={`flex gap-2.5 ${i % 2 === 0 ? 'flex-row-reverse' : 'flex-row'}`}>
             <div className="w-9 h-9 rounded-xl widget animate-shimmer shrink-0" />
@@ -27,16 +30,24 @@ export default function ChatThread({
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 min-h-0 flex items-center justify-center p-6 text-center">
-        <p className="text-sm text-white/45 font-medium">
-          No messages yet. Say hello!
-        </p>
+      <div
+        ref={ref}
+        className="chat-thread-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain p-4"
+      >
+        <div className="min-h-full flex items-center justify-center text-center">
+          <p className="text-sm text-white/45 font-medium">
+            No messages yet. Say hello!
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4">
+    <div
+      ref={ref}
+      className="chat-thread-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4"
+    >
       {messages.map((msg) => {
         const mine = msg.sender_id === currentUserId;
         return (
@@ -66,4 +77,6 @@ export default function ChatThread({
       })}
     </div>
   );
-}
+});
+
+export default ChatThread;

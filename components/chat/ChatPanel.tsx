@@ -43,7 +43,7 @@ export default function ChatPanel({
   const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
   const [senderName, setSenderName] = useState(currentDisplayName);
   const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const threadScrollRef = useRef<HTMLDivElement>(null);
 
   const presenceIds = useMemo(
     () =>
@@ -145,8 +145,26 @@ export default function ChatPanel({
   }, [loadMessages]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = threadScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages, typingUsers]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const sync = () => {
+      document.documentElement.style.setProperty('--chat-vv-height', `${vv.height}px`);
+    };
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+      document.documentElement.style.removeProperty('--chat-vv-height');
+    };
+  }, []);
 
   const handleSend = async (body: string) => {
     stopTyping();
@@ -226,8 +244,12 @@ export default function ChatPanel({
         </div>
       </div>
 
-      <ChatThread messages={messages} currentUserId={currentUserId} loading={loading} />
-      <div ref={bottomRef} />
+      <ChatThread
+        ref={threadScrollRef}
+        messages={messages}
+        currentUserId={currentUserId}
+        loading={loading}
+      />
       <TypingIndicator users={typingUsers} />
       <ChatInput onSend={handleSend} onTyping={notifyTyping} onStopTyping={stopTyping} />
     </div>
