@@ -89,7 +89,14 @@ export default function InviteMember({
           email: result.email,
           is_guest: false,
         });
-        toast.success(`${result.display_name} added instantly — they did not need the share link.`);
+        if (result.emailSent) {
+          toast.success(`${result.display_name} added — notification email sent!`);
+        } else if (result.emailSkipped) {
+          toast.success(`${result.display_name} added to the group (email not configured).`);
+        } else {
+          toast.success(`${result.display_name} added to the group.`);
+          if (result.emailError) toast.error(`Email failed: ${result.emailError}`);
+        }
       } else {
         const member = await addGuestMemberByName(groupId, trimmed);
         onMemberAdded({
@@ -111,7 +118,7 @@ export default function InviteMember({
   let hint = 'Type a name for guest, or full email for registered user / invite';
   let inputIcon = UserRound;
   if (isEmail) {
-    hint = 'Registered user joins instantly · unknown email gets invite via mail';
+    hint = 'Registered user is added instantly and gets an email · unknown email gets invite';
     inputIcon = Mail;
   } else if (isName) {
     hint = nameTaken ? 'This name is already in the group' : 'Will be added as guest (no login required)';

@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { createGroupInvite } from '@/utils/server/groupInvite';
+import { sendAddedToGroupEmail } from '@/utils/sendInviteEmail';
 
 const NAME_PATTERN = /^[A-Za-z][A-Za-z0-9 ]{1,29}$/;
 
@@ -183,6 +184,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: insertErr.message }, { status: 500 });
     }
 
+    const origin = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
+
+    const [{ data: groupRow }, { data: inviterProfile }] = await Promise.all([
+      supabase.from('groups').select('name').eq('id', groupId).single(),
+      supabase.from('profiles').select('display_name, email').eq('id', user.id).single(),
+    ]);
+
+    const inviterName =
+      inviterProfile?.display_name?.trim() ||
+      inviterProfile?.email?.split('@')[0] ||
+      'A group member';
+
+    const emailResult = await sendAddedToGroupEmail({
+      to: profile.email,
+      groupName: groupRow?.name ?? 'your group',
+      inviterName,
+      groupUrl: `${origin}/dashboard/groups`,
+    });
+
     supabase
       .from('activity_log')
       .insert({
@@ -198,6 +218,9 @@ export async function POST(request: Request) {
       display_name: profile.display_name ?? profile.email,
       is_guest: false,
       added: true,
+      emailSent: emailResult.sent,
+      emailSkipped: emailResult.skipped,
+      emailError: emailResult.error,
     });
   } catch (err) {
     console.error('[POST /api/members]', err);
